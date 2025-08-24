@@ -1,3 +1,4 @@
 .DS_Store
+@publish/*
 @scratch/*
-@publish/!publish_module.ps1
+tests/api-token.ps1
