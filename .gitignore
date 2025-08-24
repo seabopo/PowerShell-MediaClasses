@@ -1,2 +1,3 @@
 .DS_Store
 @scratch/*
+@publish/!publish_module.ps1
