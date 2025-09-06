@@ -193,6 +193,32 @@ Class Image {
 
 }
 
+Class Collection {
+
+    [String] $ID
+    [String] $Name
+    [String] $BackdropPath
+    [String] $PosterPath
+    [String] $BackdropURL
+    [String] $PosterURL
+
+    Collection ( ) {}
+
+    Collection ( [String] $ID, [String] $Name ) {
+        $this.ID   = $ID
+        $this.Name = $Name
+    }
+
+    Collection ( [Hashtable] $Info ) {
+        $Info.Keys | ForEach-Object {
+            if ( $this.PSObject.Properties.Match($_) ) {
+                $this."$($_)" = $Info."$($_)"
+            }
+        }
+    }
+
+}
+
 #==================================================================================================================
 #==================================================================================================================
 # TVShow Classes
@@ -237,7 +263,6 @@ Class TVShow {
 
     [TVSeason[]]      $Seasons = @()
 
-    [TVEpisode[]]     $Episodes = @()
     [TVEpisode]       $LastEpisode
     [TVEpisode]       $NextEpisode
 
@@ -359,7 +384,61 @@ Class TVEpisode {
 #==================================================================================================================
 #==================================================================================================================
 
+Class Movie {
 
+    [String]            $Source
+    [String]            $ID
+    [Bool]              $Adult
+  
+    [String]            $Title
+    [String]            $Tagline
+    [String]            $OriginalTitle
+    [String]            $OriginalLanguage
+    [String]            $Description
+    [String]            $LongDescription
+    [String]            $Genre
+    [Item[]]            $Genres
+    [String]            $ReleaseDate
+    [String]            $Year
+    [String]            $Rating
+    [ContentRating[]]   $Ratings
+  
+    [String]            $Status
+    [Int]               $Runtime
+    [Entity[]]          $Studios
+    [Int]               $Budget
+    [Int]               $Revenue
+  
+    [String]            $HomePage
+    [String]            $BackdropPath
+    [String]            $PosterPath
+    [String]            $BackdropURL
+    [String]            $PosterURL
+  
+    [Credit[]]          $Cast
+    [Credit[]]          $Crew
+
+    [Collection[]]      $Collections
+
+    [Image[]]           $Images
+
+    [Item[]]            $ExternalIDs
+
+    Movie ( ) {}
+
+    Movie ( [String] $Title ) {
+        $this.Title  = $Title
+    }
+
+    Movie ( [Hashtable] $Info ) {
+        $Info.Keys | ForEach-Object {
+            if ( $this.PSObject.Properties.Match($_) ) {
+                $this."$($_)" = $Info."$($_)"
+            }
+        }
+    }
+
+}
 
 #==================================================================================================================
 #==================================================================================================================
