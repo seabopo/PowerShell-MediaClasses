@@ -410,8 +410,10 @@ Class Movie {
     [Int]               $Revenue
   
     [String]            $HomePage
+    [String]            $LogoPath
     [String]            $BackdropPath
     [String]            $PosterPath
+    [String]            $LogoURL
     [String]            $BackdropURL
     [String]            $PosterURL
   
