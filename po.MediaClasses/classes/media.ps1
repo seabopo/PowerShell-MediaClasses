@@ -19,6 +19,7 @@ Class Credit {
     [Int]    $CreditOrder
     [String] $ProfileImagePath
     [String] $ProfileImageURL
+    [String] $ProfilePageURL
 
     Credit ( ) {}
 
