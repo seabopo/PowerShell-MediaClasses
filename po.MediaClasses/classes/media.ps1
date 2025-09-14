@@ -339,7 +339,6 @@ Class TVEpisode {
     [String]      $Type
     [String]      $Title
     [String]      $Description
-    [String]      $LongDescription
 
     [Credit[]]    $Cast
     [Credit[]]    $Crew
@@ -396,7 +395,6 @@ Class Movie {
     [String]            $OriginalTitle
     [String]            $OriginalLanguage
     [String]            $Description
-    [String]            $LongDescription
     [String]            $Genre
     [Item[]]            $Genres
     [String]            $ReleaseDate
