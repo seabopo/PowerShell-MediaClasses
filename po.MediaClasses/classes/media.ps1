@@ -400,6 +400,7 @@ Class Movie {
     [String]            $ReleaseDate
     [String]            $Year
     [String]            $Rating
+    [String]            $RatingReason
     [ContentRating[]]   $Ratings
   
     [String]            $Status
@@ -412,9 +413,11 @@ Class Movie {
     [String]            $LogoPath
     [String]            $BackdropPath
     [String]            $PosterPath
+    [String]            $Poster16x9Path
     [String]            $LogoURL
     [String]            $BackdropURL
     [String]            $PosterURL
+    [String]            $Poster16x9URL
   
     [Credit[]]          $Cast
     [Credit[]]          $Crew
