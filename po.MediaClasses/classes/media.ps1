@@ -263,6 +263,7 @@ Class TVShow {
     [String]          $BackdropURL
 
     [TVSeason[]]      $Seasons = @()
+    [TVEpisode[]]     $Episodes = @()
 
     [TVEpisode]       $LastEpisode
     [TVEpisode]       $NextEpisode
