@@ -339,25 +339,38 @@ Class TVEpisode {
 
     [String]      $Source
     [String]      $ID
+    [String]      $URL
     [String]      $SeasonID
+    [String]      $SeasonURL
     [String]      $ShowID
+    [String]      $ShowURL
        
     [int32]       $Season
     [int32]       $Number
+    [int32]       $Index
+    [Bool]        $IsFirstEpisode
     [String]      $Type
+    [String]      $ShowTitle
     [String]      $Title
     [String]      $Description
+    [String]      $Rating
 
     [Credit[]]    $Cast
     [Credit[]]    $Crew
     [Credit[]]    $Guests
-
-    [String]      $ProductionCode
+    
     [String]      $AirDate
+    [String]      $ProductionCode
     [String]      $Network
     [int32]       $Runtime
    
+    [String]      $BackdropPath
+    [String]      $PosterPath
+    [String]      $Poster16x9Path
     [String]      $StillPath
+    [String]      $BackdropURL
+    [String]      $PosterURL
+    [String]      $Poster16x9URL
     [String]      $StillURL
 
     [Item[]]      $ExternalIDs
