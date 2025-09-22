@@ -257,10 +257,14 @@ Class TVShow {
     [Entity[]]        $Networks
 
     [String]          $HomePage
-    [String]          $PosterPath
+    [String]          $LogoPath
     [String]          $BackdropPath
-    [String]          $PosterURL
+    [String]          $PosterPath
+    [String]          $Poster16x9Path
+    [String]          $LogoURL
     [String]          $BackdropURL
+    [String]          $PosterURL
+    [String]          $Poster16x9URL
 
     [TVSeason[]]      $Seasons = @()
     [TVEpisode[]]     $Episodes = @()
@@ -304,11 +308,13 @@ Class TVSeason {
     [String]      $LastAirDate
     [int32]       $TotalEpisodes
    
-    [String]      $PosterPath
     [String]      $BackdropPath
-    [String]      $PosterURL
+    [String]      $PosterPath
+    [String]      $Poster16x9Path
     [String]      $BackdropURL
-
+    [String]      $PosterURL
+    [String]      $Poster16x9URL
+    
     [TVEpisode[]] $Episodes = @()
 
     [Item[]]      $ExternalIDs
