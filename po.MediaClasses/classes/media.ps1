@@ -235,6 +235,7 @@ Class TVShow {
     [String]          $OriginalName
     [String]          $Description
     [String]          $Rating
+    [String]          $RatingReason
     [ContentRating[]] $Ratings
     [String]          $Genre
     [Item[]]          $Genres
