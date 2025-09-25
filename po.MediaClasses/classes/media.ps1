@@ -362,6 +362,8 @@ Class TVEpisode {
     [String]      $ShowTitle
     [String]      $Title
     [String]      $Description
+    [String]      $Genre
+    [Item[]]      $Genres
     [String]      $Rating
 
     [Credit[]]    $Cast
