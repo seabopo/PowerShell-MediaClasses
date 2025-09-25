@@ -294,7 +294,11 @@ Class TVSeason {
 
     [String]      $Source
     [String]      $ID
+    [String]      $URL
+
+    [String]      $ShowTitle
     [String]      $ShowID
+    [String]      $ShowURL
    
     [int32]       $Number
     [String]      $Name
