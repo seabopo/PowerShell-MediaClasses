@@ -19,10 +19,12 @@ Provides a set of reusable PowerShell classes for media files:
     ```
     $env:PSModulePath path
     ```
-2. Add a 'using' statement to your module definition (psm1 file) or script file **before any other lines of code**:
+2. Add an "Import-Module" statement to your code or add po.MediaClasses to the "RequiredModules" module definition
+   (psd1 file):
     ```
-    using module po.MediaClasses
+    import module po.MediaClasses
     ```
+    This module uses the "ScriptsToProcess" PowerShell class work-around documented below.
 
 
 ## Available Properties and Methods

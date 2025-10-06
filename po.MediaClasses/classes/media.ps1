@@ -1,6 +1,6 @@
 #==================================================================================================================
 #==================================================================================================================
-# Shared Classes
+# Shared Classes (Movies & TV Shows)
 #==================================================================================================================
 #==================================================================================================================
 
@@ -47,7 +47,7 @@ Class Credit {
 
     Credit ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -74,13 +74,13 @@ Class ContentRating {
     }
 
     ContentRating ( [String] $Country, [String] $Rating) { 
-        $this.Country     = $Country
-        $this.Rating      = $Rating
+        $this.Country = $Country
+        $this.Rating  = $Rating
     }
 
     ContentRating ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -121,7 +121,7 @@ Class Entity {
 
     Entity ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -151,7 +151,7 @@ Class Item {
 
     Item ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -186,13 +186,17 @@ Class Image {
 
     Image ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
     }
 
 }
+
+#------------------------------------------------------------------------------------------------------------------
+# An collection of media items.
+#------------------------------------------------------------------------------------------------------------------
 
 Class Collection {
 
@@ -212,7 +216,7 @@ Class Collection {
 
     Collection ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -270,8 +274,7 @@ Class TVShow {
     [String]          $Poster16x9URL
     [String]          $PosterSquareURL
 
-    [TVSeason[]]      $Seasons = @()
-    [TVEpisode[]]     $Episodes = @()
+    [TVSeason[]]      $Seasons
 
     [TVEpisode]       $LastEpisode
     [TVEpisode]       $NextEpisode
@@ -279,16 +282,61 @@ Class TVShow {
     [Item[]]          $ExternalIDs
     [Image[]]         $Images
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     TVShow ( ) {}
 
     TVShow ( [String] $Name ) { $this.Name = $Name }
 
     TVShow ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
+    }
+
+  #-----------------------------------------------
+  # Properties
+  #-----------------------------------------------
+
+  # Episodes Read-only Runtime Property.
+  # Shows as null in the debugger as this is built/overwritten at runtime.
+  # Values are not exported (duplicated) in the XML.
+    [TVEpisode[]] $Episodes = $( $this | 
+        Add-Member ScriptProperty 'Episodes' -Force {
+            $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
+        }
+    )
+
+  #-----------------------------------------------
+  # Methods
+  #-----------------------------------------------
+
+  # Get all episodes (requires parens "()" to work.)
+    # [TVEpisode[]] Episodes ( ) {
+    #     return $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
+    # }
+
+  # Export the current TVShow object to a specified file path as a typed XML object.
+    [void] ExportToCache ( [String] $FilePath ) {
+        $this | Export-Clixml -LiteralPath $FilePath -Depth 100
+        $this.Cache.SetCachePaths()
+    }
+
+  # Import a TVShow object from a typed XML definition.
+    static [TVShow] ImportFromCache ( [String] $Path ) {
+        if ( Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore ) {
+            [TVShow] $importedTVShow = Import-Clixml -LiteralPath $Path
+        }
+        else {
+            Write-Msg -x -lc -m $('ImportFromCache: A valid file path was not provided. Provide a path ' + 
+                                  'to a valid TVShow cache XML file.')
+            break
+        }
+        return $importedTVShow
     }
 
 }
@@ -325,7 +373,7 @@ Class TVSeason {
     [String]      $Poster16x9URL
     [String]      $PosterSquareURL
     
-    [TVEpisode[]] $Episodes = @()
+    [TVEpisode[]] $Episodes
 
     [Item[]]      $ExternalIDs
     [Image[]]     $Images
@@ -336,7 +384,7 @@ Class TVSeason {
 
     TVSeason ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -404,7 +452,7 @@ Class TVEpisode {
 
     TVEpisode ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -470,7 +518,7 @@ Class Movie {
 
     Movie ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_) ) {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
         }
@@ -484,3 +532,291 @@ Class Movie {
 #==================================================================================================================
 #==================================================================================================================
 
+Class MediaFile {
+
+  #-----------------------------------------------
+  # File Properties
+  #-----------------------------------------------
+
+    [String]   $Path
+    [String]   $Name
+    [String]   $BaseName
+    [String]   $Extension
+    [String]   $ParentFolderName
+    [String]   $ParentFolderPath
+    [String]   $CreatedTime
+    [String]   $LastUpdatedTime
+    [bool]     $Exists = $false
+
+    [String]   $PosterPath
+
+  #-----------------------------------------------
+  # MPEG Properties
+  #-----------------------------------------------
+
+    [Int]      $Duration
+    [Int]      $BitRate
+    [Object[]] $Streams
+    [String[]] $Features
+
+    [String]   $VideoCodec
+    [Single]   $AspectRatio
+    [Int]      $FrameWidth
+    [Int]      $FrameHeight
+
+    [String]   $AudioCodec
+    [String]   $AudioFormat
+    [Int]      $AudioChannels
+
+    [String]   $Source
+    [String]   $Profile
+    [String]   $FileTag
+
+  #-----------------------------------------------
+  # Embedded File Metadata (AtomicParsley Atoms)
+  #-----------------------------------------------
+  # '*' are default fields for TV Shows.
+  # '&' are generated from iTunesMovie data)
+
+    [String]   $TVShowName                  # tvsh *
+    [int32]    $TVSeasonNumber              # tvsn *
+    [String]   $TVSeasonDescription         # sdes
+    [int32]    $TVEpisodeNumber             # tves *
+    [String]   $TVEpisodeID                 # tven *
+    [String]   $TVNetwork                   # tvnn
+
+    [String]   $Title                       # ©nam *
+    [String]   $Description                 # desc *
+    [String]   $LongDescription             # ldes *
+    [String]   $Genre                       # ©gen *
+    [String[]] $Genres                      
+    [String]   $iTunesGenre                 # geID *
+    [String]   $ReleaseDate                 # ©day *
+    [String]   $ContentRating               # iTunEXTC *
+    [String]   $iTunesMovie                 # iTunMOVI
+    [String]   $iTunesMovieCast             # iTunMOVI Generated data
+    [String]   $iTunesMovieDirectors        # iTunMOVI Generated data
+    [String]   $iTunesMovieScreenwriters    # iTunMOVI Generated data
+    [String]   $iTunesMovieStudio           # iTunMOVI Generated data
+
+    [String]   $Artist                      # ©ART *
+    [String]   $AlbumArtist                 # aART *
+    [String]   $Composer                    # ©wrt
+
+    [String]   $Album                       # ©alb *
+    [String]   $Grouping                    # ©grp
+    [String]   $Compilation                 # cpil *
+    [String]   $TrackNumber                 # trkn *
+    [String]   $DiscNumber                  # disk *
+
+    [String]   $SortName                    # sonm
+    [String]   $SortShow                    # sosn
+    [String]   $SortAlbum                   # soal
+    [String]   $SortArtist                  # soar
+    [String]   $SortAlbumArtist             # soaa
+    [String]   $SortComposer                # soco
+
+    [String]   $CoverArt                    # covr *
+    [String]   $Comment                     # ©cmt
+
+    [String]   $MediaType                   # stik *
+    [String]   $HDVideo                     # hdvd *
+    [String]   $Flavor                      # flvr * (read only)
+
+    [String]   $Keywords                    # keyw
+    [String]   $Category                    # catg
+    [String]   $UserRating                  # rate
+
+    [String]   $iTunesCatalogID             # cnID *
+    [String]   $PurchaseDate                # purd *
+    [String]   $AccountType                 # akID (read only)
+    [String]   $PurchaseAccount             # apID *
+    [String]   $PurchaseName                # ownr * (read only)
+    [String]   $DownloadAccount             # dwID * (read only)
+    [String]   $DownloadName                # dwlr * (read only)
+    [String]   $StoreFrontID                # sfID * (read only)
+    [String]   $VendorID                    # xid  *
+    [String]   $ArtistID                    # atID *
+    [String]   $PlayListID                  # plID *
+    [String]   $Copyright                   # cprt *
+
+    [String]   $Lyrics                      # ©lyr
+    [String]   $Tempo                       # tmpo
+    [String]   $AdvisoryRating              # rtng *
+    [String]   $GaplessPlayback             # pgap *
+    [String]   $MusicGenre                  # gnre
+
+    [String]   $Podcast                     # pcst
+    [String]   $PodcastURL                  # purl
+    [String]   $PodcastGUID                 # egid
+
+    [String]   $EncodingTool                # ©too
+    [String]   $EncodedBy                   # ©enc
+    [String]   $CameraID                    # cmID
+
+    [String]   $rawAtomData
+    [String]   $UnknownAtoms
+
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
+    MediaFile ( ) { }
+
+    MediaFile ( [string] $MediaFilePath ) {
+        $this.SetFileProperties( $MediaFilePath )
+    }
+
+  #-----------------------------------------------
+  # Private Methods
+  #-----------------------------------------------
+
+  # Sets the MediaFile properties based on the physical file attributes
+    hidden [void] SetFileProperties ( [string] $MediaFilePath ) {
+        
+        $this.Path = $MediaFilePath
+        $this.Exists = [System.IO.File]::Exists($MediaFilePath)
+
+        if ( $this.Exists ) {
+            
+            $File = Get-Item -LiteralPath $MediaFilePath
+
+            $this.Name             = $File.Name
+            $this.BaseName         = $File.BaseName
+            $this.Extension        = $File.Extension
+            $this.ParentFolderName = $File.Directory.Name
+            $this.ParentFolderPath = $File.Directory.FullName
+            $this.CreatedTime      = $File.CreationTime
+            $this.LastUpdatedTime  = $File.LastWriteTime
+
+            $this.SetPosterPath()
+
+        }
+    }
+
+  # Test for the existence of and sets the poster path.
+    hidden [void] SetPosterPath ( ) {
+        $SupportedFileExtensions = @('.jpg','.jpeg','.png','.tbn')
+        foreach ( $Extension in $SupportedFileExtensions ){
+            $PosterFilePath = ($this.Path -replace "\$($this.Extension)$",'') + $Extension
+            if ( [System.IO.File]::Exists($PosterFilePath) ) {
+                $this.PosterPath = $PosterFilePath
+                break
+            }
+        }
+    }
+
+  # Set MPEG properties.
+    hidden [void] SetMPEGSummaryProperties ( ) {
+
+        foreach ( $stream in $this.streams ) {
+
+            if ( Test-IsSomething($stream.codec_name) ) {
+
+                switch -Wildcard ( $stream.codec_name ) {
+                    'bin_data'  { $this.Features += 'chapters' }
+                    'mov_text'  { $this.Features += 'subtitles' }
+                    'eia_608'   { $this.Features += 'closedCaptions' }
+                    'mjpeg'     { $this.Features += 'coverArt' }
+                    'png'       { $this.Features += 'coverArt' }
+                    'aac'       {
+                                    if ( $null -eq $this.AudioFormat ) {
+                                        $this.AudioCodec     = $($stream.codec_name)
+                                        $this.AudioFormat    = $($stream.channel_layout)
+                                        $this.AudioChannels  = $([int]$stream.channels)
+                                    }
+                                    $this.Features += $('{0}:{1}' -f $($stream.codec_name.ToUpper()),
+                                                                     $($stream.channel_layout))
+                                }
+                    '*ac3'      {
+                                    if ( $null -eq $this.AudioFormat -or $this.AudioFormat -like "*AAC*" ) {
+                                        $this.AudioCodec     = $($stream.codec_name)
+                                        $this.AudioFormat    = $($stream.channel_layout)
+                                        $this.AudioChannels  = $([int]$stream.channels)
+                                    }
+                                    $this.Features += $('{0}:{1}' -f $($stream.codec_name.ToUpper()),
+                                                                     $($stream.channel_layout))
+                                }
+                    'h26*'      {
+                                    $this.Features   += $($stream.codec_name)
+                                    $this.VideoCodec  = $($stream.codec_name)
+                                    $this.FrameWidth  = $($stream.width)
+                                    $this.FrameHeight = $($stream.height)
+                                    if ( $stream.display_aspect_ratio ) {
+                                        $ratio = $stream.display_aspect_ratio -split ':'
+                                        $this.AspectRatio = [Math]::Round(([int]$ratio[0] / [int]$ratio[1]),2)
+                                    }
+                                    else {
+                                        $this.AspectRatio = [Math]::Round(([int]$stream.width / [int]$stream.height),2)
+                                    }
+                                }
+                }
+
+            } else {
+
+                switch ( $stream.codec_type ) {
+                    'data'      { $this.Features += 'subtitles' }
+                    'subtitle'  { $this.Features += 'closedCaptions' }
+                    'audio'     {
+                                    $this.AudioCodec     = $('AC3drm')
+                                    $this.AudioFormat    = $($stream.channel_layout)
+                                    $this.AudioChannels  = $([int]$stream.channels)
+                                    $this.Features      += $('AC3drm:{0}' -f $($stream.channel_layout))
+                                }
+                    'video'     {
+                                    $this.Features   += $('h264drm')
+                                    $this.VideoCodec  = $('h264drm')
+                                    $this.FrameWidth  = $($stream.width)
+                                    $this.FrameHeight = $($stream.height)
+                                    if ( $stream.display_aspect_ratio ) {
+                                        $ratio = $stream.display_aspect_ratio -split ':'
+                                        $this.AspectRatio = [Math]::Round(([int]$ratio[0] / [int]$ratio[1]),2)
+                                    }
+                                    else {
+                                        $this.AspectRatio = [Math]::Round(([int]$stream.width / [int]$stream.height),2)
+                                    }
+                            }
+
+                }
+
+            }
+
+        }
+
+        $this.features = $this.features | Sort-Object -Unique
+
+    }
+
+  #-----------------------------------------------
+  # Public Methods
+  #-----------------------------------------------
+
+  # Set the properties gotten from AtomicParsley.
+    [void] SetATOMproperties ( [Hashtable] $AtomData ) {
+        $AtomData.Keys | ForEach-Object {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
+                $this."$($_)" = $AtomData."$($_)"
+            }
+        }
+    }
+
+  # Sets the properties tied to the MPEG data gotten from ffprobe.
+    [void] SetMPEGproperties ( [PSCustomObject] $MPEGdata ) {
+
+        if ( IsSomething($MPEGdata) ) {
+
+            if ( IsSomething($MPEGdata.format) ) {
+                $this.Duration = [int][math]::Round($MPEGdata.format.duration)
+                $this.BitRate  = [int]$MPEGdata.format.bit_rate
+            }
+
+            if ( IsSomething($MPEGdata.streams) ) {
+                $this.Streams = $MPEGdata.streams
+                $this.SetMPEGSummaryProperties()
+            }
+
+        }
+
+    }
+
+}

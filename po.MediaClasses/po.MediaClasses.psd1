@@ -12,7 +12,7 @@
 RootModule = 'po.MediaClasses.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.0.14'
+ModuleVersion = '0.0.15'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Core', 'Desktop'
@@ -95,13 +95,13 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        # Tags = @()
+        Tags = @('PowerShell','TMDB','MP4')
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = 'https://github.com/seabopo/PowerShell-MediaClasses/blob/main/LICENSE'
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/seabopo/PowerShell-MediaClasses'
 
         # A URL to an icon representing this module.
         # IconUri = ''
@@ -123,7 +123,7 @@ PrivateData = @{
 } # End of PrivateData hashtable
 
 # HelpInfo URI of this module
-# HelpInfoURI = ''
+HelpInfoURI = 'https://github.com/seabopo/PowerShell-MediaClasses'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''
