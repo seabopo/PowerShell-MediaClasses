@@ -24,7 +24,9 @@ Provides a set of reusable PowerShell classes for media files:
     ```
     import module po.MediaClasses
     ```
-    This module uses the "ScriptsToProcess" PowerShell class work-around documented below.
+  **NOTE:** If a PowerShell module containing a custom class uses the "Module/VERSION#/module.psd1" 
+  file structure (common when pulling from publishing repos) instead of the "Module/module.psd1" structure, VSCode/PSScriptAnalyzer will not find the module when using the "using module" 
+  statement and will throw linting errors for all the custom types.
 
 
 ## Available Properties and Methods

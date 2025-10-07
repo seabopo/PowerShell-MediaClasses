@@ -8,6 +8,9 @@
 # Initialize Test Environment
 #==================================================================================================================
 
+# Load the custom classes from this module.
+  using module ../po.MediaClasses
+
 # Load the standard test initialization file.
 . $(Join-Path -Path $PSScriptRoot -ChildPath '_init-test-environment.ps1')
 
@@ -18,8 +21,8 @@
 # Run Tests
 #==================================================================================================================
 
-# $testFileName = 'TVEpisodes/Breaking In - s01e06 - Breaking Out [1080p WS iTunes HD DD].m4v'
-$testFileName = 'Movies/Zootopia (2016) [1080p WS BR SHQ20+2DA DD].m4v'
+$testFileName = 'TVEpisodes/Show - s01e06 - Episode Title [1080p WS IT HD DD].m4v'
+$testFileName = 'Movies/Movie (2016).m4v'
 
 Write-Msg -p -ps -bb -m $( 'Test' ) -ForceWrite
 

@@ -12,7 +12,7 @@
 RootModule = 'po.MediaClasses.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.0.15'
+ModuleVersion = '0.1.0'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Core', 'Desktop'
@@ -24,7 +24,7 @@ GUID = '09cf8fe4-9282-4b0a-8a00-d4600bf644ee'
 Author = 'Sean Powell (seabopo)'
 
 # Company or vendor of this module
-CompanyName = ''
+# CompanyName = ''
 
 # Copyright statement for this module
 Copyright = '(c) Sean Powell. MIT License.'
@@ -57,7 +57,7 @@ RequiredModules = @('po.Toolkit')
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-ScriptsToProcess = @('classes/media.ps1')
+# ScriptsToProcess = @('classes/media.ps1')
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
