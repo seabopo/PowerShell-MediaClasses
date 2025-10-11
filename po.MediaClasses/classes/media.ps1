@@ -322,13 +322,12 @@ Class TVShow {
 
   # Export the current TVShow object to a specified file path as a typed XML object.
     [void] ExportToCache ( [String] $FilePath ) {
-        $this | Export-Clixml -LiteralPath $FilePath -Depth 100
-        $this.Cache.SetCachePaths()
+        $this | Export-Clixml -LiteralPath $FilePath -Depth 100 -Force
     }
 
   # Import a TVShow object from a typed XML definition.
     static [TVShow] ImportFromCache ( [String] $Path ) {
-        if ( Test-Path -LiteralPath $Path -PathType Leaf -ErrorAction Ignore ) {
+        if ( [System.IO.File]::Exists($Path) ) {
             [TVShow] $importedTVShow = Import-Clixml -LiteralPath $Path
         }
         else {
