@@ -140,13 +140,13 @@ Class Item {
 
     Item ( ) {}
 
+    Item ( [String] $Name ) { 
+        $this.Name = $Name
+    }
+
     Item ( [String] $Name, [String] $ID ) { 
         $this.Name = $Name
         $this.ID   = $ID
-    }
-
-    Item ( [String] $Name ) { 
-        $this.Name = $Name
     }
 
     Item ( [Hashtable] $Info ) {
@@ -274,7 +274,8 @@ Class TVShow {
     [String]          $Poster16x9URL
     [String]          $PosterSquareURL
 
-    [TVSeason[]]      $Seasons
+    [TVSeason[]]      $Seasons  = @()
+    [TVEpisode[]]     $Episodes = @()
 
     [TVEpisode]       $LastEpisode
     [TVEpisode]       $NextEpisode
@@ -297,6 +298,13 @@ Class TVShow {
             }
         }
     }
+    
+  # The Static Constructor upgrades getter/setter properties (not visible in the debugger).
+    static TVShow ( ) {
+        [TVShow] | Update-TypeData -MemberType ScriptProperty -MemberName Episodes -Value {
+            return $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
+        }
+    }
 
   #-----------------------------------------------
   # Properties
@@ -305,11 +313,11 @@ Class TVShow {
   # Episodes Read-only Runtime Property.
   # Shows as null in the debugger as this is built/overwritten at runtime.
   # Values are not exported (duplicated) in the XML.
-    [TVEpisode[]] $Episodes = $( $this | 
-        Add-Member ScriptProperty 'Episodes' -Force {
-            $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
-        }
-    )
+    # [TVEpisode[]] $Episodes = $( $this | 
+    #     Add-Member ScriptProperty 'Episodes' -Force {
+    #         $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
+    #     }
+    # )
 
   #-----------------------------------------------
   # Methods
