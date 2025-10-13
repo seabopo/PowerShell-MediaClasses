@@ -441,6 +441,9 @@ Class TVEpisode {
     [String]      $PosterSquareURL
     [String]      $StillURL
 
+    [String]      $BaseFileName
+    [String]      $ShowFileName
+
     [Item[]]      $ExternalIDs
     [Image[]]     $Images
 
@@ -462,6 +465,22 @@ Class TVEpisode {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $Info."$($_)"
             }
+        }
+    }
+
+    static TVEpisode ( ) {
+        [TVEpisode] | Update-TypeData -MemberType ScriptProperty -MemberName BaseFileName -Value {
+            $t = $($this.Title -replace ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join '')))
+            $s = $this.season.ToString().PadLeft(2,'0')
+            $e = $this.number.ToString().PadLeft(2,'0')
+            $n = $( "s{0}e{1} - {2}" -f $s, $e, $t )
+            return $n
+        }
+        [TVEpisode] | Update-TypeData -MemberType ScriptProperty -MemberName ShowFileName -Value {
+            $s = $($this.ShowTitle -replace ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join '')))
+            $b = $this.BaseFileName
+            $n = $( "{0} - {1}" -f $s, $b )
+            return $n
         }
     }
 
