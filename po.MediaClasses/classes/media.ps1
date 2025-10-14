@@ -417,6 +417,7 @@ Class TVEpisode {
     [String]      $ShowTitle
     [String]      $Title
     [String]      $Description
+    [String]      $LongDescription
     [String]      $Genre
     [Item[]]      $Genres
     [String]      $Rating
@@ -503,6 +504,7 @@ Class Movie {
     [String]            $OriginalTitle
     [String]            $OriginalLanguage
     [String]            $Description
+    [String]            $LongDescription
     [String]            $Genre
     [Item[]]            $Genres
     [String]            $ReleaseDate
