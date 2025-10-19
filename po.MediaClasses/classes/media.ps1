@@ -569,6 +569,7 @@ Class MediaFile {
     [String]   $Path
     [String]   $Name
     [String]   $BaseName
+    [String]   $FileTag
     [String]   $Extension
     [String]   $ParentFolderName
     [String]   $ParentFolderPath
@@ -582,24 +583,35 @@ Class MediaFile {
   # MPEG Properties
   #-----------------------------------------------
 
-    [Int]      $Duration
-    [Int]      $BitRate
-    [Object[]] $Streams
-    [String[]] $Features
+    [Object]   $MPEG
 
-    [String]   $VideoCodec
-    [Single]   $AspectRatio
-    [Int]      $FrameWidth
-    [Int]      $FrameHeight
+    [String]   $FileTagProfile
+    [String]   $FileTagResolution
+    [String]   $FileTagAspect
+    [String]   $FileTagSource
+    [String]   $FileTagVideoProfile
+    [Bool]     $FileTagVideoProfileAnimation
+    [Bool]     $FileTagVideoProfileDenoised
+    [String]   $FileTagAudioProfile
 
-    [String]   $AudioCodec
-    [String]   $AudioFormat
-    [Int]      $AudioChannels
+    [String]   $CommentProfile
+    [String]   $CommentResolution
+    [String]   $CommentAspect
+    [String]   $CommentSource
+    [String]   $CommentVideoProfile
+    [Bool]     $CommentVideoProfileAnimation
+    [Bool]     $CommentVideoProfileDenoised
+    [String]   $CommentAudioProfile
 
-    [String]   $Source
-    [String]   $Profile
-    [String]   $FileTag
-
+    [String]   $DerivedProfile
+    [String]   $DerivedResolution
+    [String]   $DerivedAspect
+    [String]   $DerivedSource
+    [String]   $DerivedVideoProfile
+    [Bool]     $DerivedVideoProfileAnimation
+    [Bool]     $DerivedVideoProfileDenoised
+    [String]   $DerivedAudioProfile
+    
   #-----------------------------------------------
   # Embedded File Metadata (AtomicParsley Atoms)
   #-----------------------------------------------
@@ -696,7 +708,7 @@ Class MediaFile {
     }
 
   #-----------------------------------------------
-  # Private Methods
+  # Methods
   #-----------------------------------------------
 
   # Sets the MediaFile properties based on the physical file attributes
@@ -719,6 +731,10 @@ Class MediaFile {
 
             $this.SetPosterPath()
 
+            $this.Name -match '(?<=\[)[^\]]+(?=\])'
+            $this.FileTag = $matches[0]
+            $this.SetProfileProperties('FileTag',$this.FileTag)
+
         }
     }
 
@@ -734,117 +750,170 @@ Class MediaFile {
         }
     }
 
-  # Set MPEG properties.
-    hidden [void] SetMPEGSummaryProperties ( ) {
-
-        foreach ( $stream in $this.streams ) {
-
-            if ( Test-IsSomething($stream.codec_name) ) {
-
-                switch -Wildcard ( $stream.codec_name ) {
-                    'bin_data'  { $this.Features += 'chapters' }
-                    'mov_text'  { $this.Features += 'subtitles' }
-                    'eia_608'   { $this.Features += 'closedCaptions' }
-                    'mjpeg'     { $this.Features += 'coverArt' }
-                    'png'       { $this.Features += 'coverArt' }
-                    'aac'       {
-                                    if ( $null -eq $this.AudioFormat ) {
-                                        $this.AudioCodec     = $($stream.codec_name)
-                                        $this.AudioFormat    = $($stream.channel_layout)
-                                        $this.AudioChannels  = $([int]$stream.channels)
-                                    }
-                                    $this.Features += $('{0}:{1}' -f $($stream.codec_name.ToUpper()),
-                                                                     $($stream.channel_layout))
-                                }
-                    '*ac3'      {
-                                    if ( $null -eq $this.AudioFormat -or $this.AudioFormat -like "*AAC*" ) {
-                                        $this.AudioCodec     = $($stream.codec_name)
-                                        $this.AudioFormat    = $($stream.channel_layout)
-                                        $this.AudioChannels  = $([int]$stream.channels)
-                                    }
-                                    $this.Features += $('{0}:{1}' -f $($stream.codec_name.ToUpper()),
-                                                                     $($stream.channel_layout))
-                                }
-                    'h26*'      {
-                                    $this.Features   += $($stream.codec_name)
-                                    $this.VideoCodec  = $($stream.codec_name)
-                                    $this.FrameWidth  = $($stream.width)
-                                    $this.FrameHeight = $($stream.height)
-                                    if ( $stream.display_aspect_ratio ) {
-                                        $ratio = $stream.display_aspect_ratio -split ':'
-                                        $this.AspectRatio = [Math]::Round(([int]$ratio[0] / [int]$ratio[1]),2)
-                                    }
-                                    else {
-                                        $this.AspectRatio = [Math]::Round(([int]$stream.width / [int]$stream.height),2)
-                                    }
-                                }
-                }
-
-            } else {
-
-                switch ( $stream.codec_type ) {
-                    'data'      { $this.Features += 'subtitles' }
-                    'subtitle'  { $this.Features += 'closedCaptions' }
-                    'audio'     {
-                                    $this.AudioCodec     = $('AC3drm')
-                                    $this.AudioFormat    = $($stream.channel_layout)
-                                    $this.AudioChannels  = $([int]$stream.channels)
-                                    $this.Features      += $('AC3drm:{0}' -f $($stream.channel_layout))
-                                }
-                    'video'     {
-                                    $this.Features   += $('h264drm')
-                                    $this.VideoCodec  = $('h264drm')
-                                    $this.FrameWidth  = $($stream.width)
-                                    $this.FrameHeight = $($stream.height)
-                                    if ( $stream.display_aspect_ratio ) {
-                                        $ratio = $stream.display_aspect_ratio -split ':'
-                                        $this.AspectRatio = [Math]::Round(([int]$ratio[0] / [int]$ratio[1]),2)
-                                    }
-                                    else {
-                                        $this.AspectRatio = [Math]::Round(([int]$stream.width / [int]$stream.height),2)
-                                    }
-                            }
-
-                }
-
+  # Set the properties gotten from AtomicParsley.
+    hidden [void] SetProfileProperties ( [String] $ProfileName, [String] $ProfileValue ) {
+         if ( ($ProfileValue -split ' ').count -eq 6 ) {
+            $tempValue    = ($ProfileValue -split ' ')
+            $ProfileValue = ($tempValue[0..4] -join ' ') + $tempValue[5]
+         }
+        if ( ($ProfileValue -split ' ').count -eq 5 ) {
+            $pattern = '\b(?<r>\d{3,4}p)\s+(?<x>WS|FS)\s+(?<s>[A-Za-z0-9\+]+)\s+(?<v>[A-Za-z0-9\+\-]+)\s+(?<a>[A-Za-z0-9\+\-]+)\b'
+            if ($ProfileValue -match $pattern) {
+                $this."$($ProfileName)Profile"      = $ProfileValue
+                $this."$($ProfileName)Resolution"   = $matches['r']
+                $this."$($ProfileName)Aspect"       = $matches['x']
+                $this."$($ProfileName)Source"       = $matches['s']
+                $this."$($ProfileName)VideoProfile" = $matches['v']
+                $this."$($ProfileName)AudioProfile" = $matches['a']
+                $this."$($ProfileName)VideoProfileAnimation" = $this."$($ProfileName)VideoProfile" -like "*2DA"
+                $this."$($ProfileName)VideoProfileDenoised"  = $this."$($ProfileName)VideoProfile" -like "*ULD"
             }
-
         }
-
-        $this.features = $this.features | Sort-Object -Unique
-
     }
 
-  #-----------------------------------------------
-  # Public Methods
-  #-----------------------------------------------
-
-  # Set the properties gotten from AtomicParsley.
+  # Set the properties exported from AtomicParsley.
     [void] SetATOMproperties ( [Hashtable] $AtomData ) {
         $AtomData.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $AtomData."$($_)"
             }
         }
+        $this.SetProfileProperties('Comment',$this.comment)
     }
 
-  # Sets the properties tied to the MPEG data gotten from ffprobe.
-    [void] SetMPEGproperties ( [PSCustomObject] $MPEGdata ) {
+  # Set the properties of the profile tag as derived from the MPEG data via FFMPEG and MediaInfo.
+    [void] SetDerivedProperties ( ) {
+        if ( $null -ne $this.MPEG ) {
+            $this.SetDerivedResolution()
+            $this.SetDerivedSource()
+            $this.SetDerivedProfile()
+            $this.DerivedAspect       = $this.MPEG.video.AspectRatioTag
+            $this.DerivedAudioProfile = $this.MPEG.audio.FormatTag
+            $this.DerivedProfile      = $( '{0} {1} {2} {3} {4}' -f $this.DerivedResolution, `
+                                                                    $this.DerivedAspect, `
+                                                                    $this.DerivedSource, `
+                                                                    $this.DerivedVideoProfile, `
+                                                                    $this.DerivedAudioProfile )
+        }
+    }
 
-        if ( IsSomething($MPEGdata) ) {
+  # Categorize the file's actual resolution into one of the main consumer resolutions.
+    hidden [void] SetDerivedResolution ( ) {
+        if ( $null -ne $this.MPEG ) {
+            $this.DerivedResolution = switch ( $this.MPEG.video.AspectRatioTag ) {
+                'FS'     {   switch ( [convert]::ToInt32($this.MPEG.video.FrameWidth) ) {
+                                { $_ -gt 2200 -and $_ -le 3400 } {    "4K"; break } # 2872
+                                { $_ -gt 1200 -and $_ -le 1600 } { "1080p"; break } # 1440
+                                { $_ -gt  800 -and $_ -le 1100 } {  "720p"; break } #  960
+                                { $_ -gt  700 -and $_ -le  800 } {  "560p"; break } #  744
+                                { $_ -gt  600 -and $_ -le  700 } {  "480p"; break } #  640
+                                { $_ -gt  300 -and $_ -le  400 } {  "240p"; break } #  320
+                            }
+                        }
+                default {   switch ( [convert]::ToInt32($this.MPEG.video.FrameWidth) ) {
+                                { $_ -gt 2100 -and $_ -le 4200 } {    "4K"; break } # 4096
+                                { $_ -gt 1700 -and $_ -le 2100 } { "1080p"; break } # 1920
+                                { $_ -gt 1100 -and $_ -le 1400 } {  "720p"; break } # 1280
+                                { $_ -gt  880 -and $_ -le 1000 } {  "560p"; break } #  996
+                                { $_ -gt  500 -and $_ -le  880 } {  "480p"; break } #  854 (Anamorphic)
+                                { $_ -gt  200 -and $_ -le  500 } {  "240p"; break } #  320
+                            }
+                        }
+            }
+        }
+    }
 
-            if ( IsSomething($MPEGdata.format) ) {
-                $this.Duration = [int][math]::Round($MPEGdata.format.duration)
-                $this.BitRate  = [int]$MPEGdata.format.bit_rate
+  # Determine the source of the video, if possible. 
+    hidden [void] SetDerivedSource ( ) {
+        
+        if ( $null -ne $this.MPEG ) {
+
+            $AC3 = @('BAMTech','USP','GPAC','VideoHandler')
+            $AAC = @('Bento4')
+
+            $m = $this.MPEG
+            $a = $this.MPEG.Audio
+            $v = $this.MPEG.Video
+
+            $this.DerivedSource = $(
+                if     ( ($m.iTunes) -and ($m.DrmProtected)                                            ) { 'IT+' }
+                elseif ( ($m.iTunes)                                                                   ) { 'IT'  }
+                elseif ( ($v.ColorSpace) -eq 'BT.601 NTSC'                                             ) { 'OTA' }
+                elseif ( ($m.EncodedBy) -like "HandBrake *"                                            ) { 'DSC' }
+                elseif ( ($m.EncodedBy) -like "Lavf*"                                                  ) { 'SC'  }
+                elseif ( ($m.CodecID -eq 'isom') -and ($a.codec -eq 'ec-3'  ) -and $v.encoder -in $AC3 ) { 'SC'  }
+                elseif ( ($m.CodecID -eq 'isom') -and ($a.codec -eq 'ac-3'  ) -and $v.encoder -in $AC3 ) { 'SC'  }
+                elseif ( ($m.CodecID -eq 'isom') -and ($a.codec -like 'mp4a') -and $v.encoder -in $AAC ) { 'SC'  }
+                elseif ( ($m.CodecID -eq 'mp42') -and ($a.codec -eq 'ec-3'  ) -and $v.encoder -in $AC3 ) { 'SC'  }
+                else                                                                                     { 'DSC' }
+            )
+
+            if ( $this.DerivedSource -eq 'DSC' ) {
+                $this.DerivedSource = $( if     ( Test-Is($this.FileTagSource) )        { $this.FileTagSource }
+                                         elseif ( Test-Is($this.CommentSource) )        { $this.CommentSource }
+                                         elseif ( $this.MPEG.video.FrameWidth -gt 900 ) { 'BR'  }
+                                         else                                           { 'DVD' } )
             }
 
-            if ( IsSomething($MPEGdata.streams) ) {
-                $this.Streams = $MPEGdata.streams
-                $this.SetMPEGSummaryProperties()
+             if ( $this.DerivedSource -eq 'OTA' ) {
+                if ( $this.FileTagSource -eq 'DVD' -or $this.CommentSource -eq 'DVD' ) { 
+                    $this.DerivedSource = 'DVD' 
+                }
+            }
+            
+        }
+        
+    }
+
+  # Set an encoding profile base on the EncodingSettings included in the exported MPEG data.
+    hidden [void] SetDerivedProfile ( ) {
+
+        if ( $null -ne $this.MPEG) {
+            $this.DerivedVideoProfile = ([convert]::ToInt32($this.MPEG.video.FrameWidth) -gt 900) ? 'HD' : 'SD'
+        }
+        
+        if ( $null -ne $this.MPEG.video.EncodingSettings ) {
+
+            $this.DerivedVideoProfile = $(
+                switch -Wildcard ( $($this.MPEG.video.Profile + ' / ' + $this.MPEG.video.EncodingSettings) ) {
+                    '* cabac=0 * bframes=0 * vbv_maxrate=768 * vbv_bufsize=2000 *' { 'IPOD'; break }
+                    '* cabac=1 * ref=1 * vbv_maxrate=20000 * vbv_bufsize=25000 *'  { 'NQ';   break }
+                    '* cabac=1 * ref=3 * deblock=1:0:0 * vbv_maxrate=62500 *'      { 'HQ';   break }
+                    '* ref=4 * bframes=5 * vbv_bufsize=31250 *'                    { 'SHQ';  break }
+                    '* ref=3 * bframes=3 * vbv_bufsize=31250 *'                    { 'ATV3'; break }
+                    '* cabac=1 * ref=3 * me=umh * subme=10 *'                      { 'ATV2'; break }
+                    '* cabac=1 * brdo=0 * mbaff=0 *'                               { 'AU';   break }
+                    '* cabac=0 * ref=1 * mbaff=0 * bframes=0 *'                    { 'AU';   break }
+                    '* cabac=0 * ref=2 * bframes=0 *'                              { 'AU';   break }
+                    '* vbv_maxrate=5500 *'                                         { 'ATV1'; break }
+                    '* vbv_maxrate=9500 *'                                         { 'ATV1'; break }
+                    '* vbv_maxrate=14000 *'                                        { 'ATV1'; break }
+                    '* cabac=1 * subme=10 * vbv_maxrate=17500 *'                   { 'ATV1'; break }
+                    '* cabac=0 * ref=4 * bframes=0 *'                              { 'ATV1'; break }
+                    '* rc=2pass * ratetol=1.0 *'                                   { 'CBR';  break }
+                    default { 
+                        ([convert]::ToInt32($this.MPEG.video.FrameWidth) -gt 900) ? 'HD' : 'SD'; break 
+                    }
+                }
+            )
+
+            $crf = $([regex]::Match($this.MPEG.video.EncodingSettings,'(?<=\bcrf=)[0-9]+(?:\.[0-9]+)?').Value)
+            if (Test-Is($crf)) { $crf = $crf.ToString().Split('.')[0] } else { $crf = $null }
+            $cbr = $([regex]::Match($this.MPEG.video.EncodingSettings,'(?<=\bbitrate=)[0-9]+(?:\.[0-9]+)?').Value)
+            if (Test-Is($cbr)) { $cbr = $cbr.ToString().substring(0,$cbr.Length -3) } else { $cbr = $null }
+            $this.DerivedVideoProfile += $crf ?? $cbr
+            
+            if ( $this.MPEG.video.Tuning -eq 'animation') { 
+                $this.DerivedVideoProfile += 'A'
+                $this.DerivedVideoProfileAnimation = $true
+            }
+            if ( $this.FileTagVideoProfileDenoised ) { 
+                $this.DerivedVideoProfile += 'D'
+                $this.DerivedVideoProfileDenoised = $true
             }
 
         }
-
+        
     }
 
 }
