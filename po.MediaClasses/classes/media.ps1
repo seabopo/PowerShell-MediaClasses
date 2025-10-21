@@ -569,15 +569,37 @@ Class MediaFile {
     [String]   $Path
     [String]   $Name
     [String]   $BaseName
+    [String]   $BaseNameWithTag
     [String]   $FileTag
+    [String]   $FileTagValue
     [String]   $Extension
+    [bool]     $Exists
+
     [String]   $ParentFolderName
     [String]   $ParentFolderPath
+
     [String]   $CreatedTime
     [String]   $LastUpdatedTime
-    [bool]     $Exists = $false
+    
+    [String]   $FileTVShowName
+    [String]   $FileTVSeasonNumber
+    [String]   $FileTVEpisodeNumber
+    [String]   $FileTVEpisodeTitle
+
+    [String]   $FileMovieName
+    [String]   $FileMovieYear
 
     [String]   $PosterPath
+
+    [String]   $ATVpId
+    [String]   $TMdbId
+    [String]   $TVdbId
+    [String]   $IMdbId
+
+    [String]   $ATVpMatchScore
+    [String]   $TMdbMatchScore
+    [String]   $TVdbMatchScore
+    [String]   $IMdbMatchScore
 
   #-----------------------------------------------
   # MPEG Properties
@@ -703,6 +725,12 @@ Class MediaFile {
 
     MediaFile ( ) { }
 
+    static MediaFile ( ) {
+        Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
+            -MemberName 'Exists' `
+            -Value { return [System.IO.File]::Exists($this.Path) }
+    }
+
     MediaFile ( [string] $MediaFilePath ) {
         $this.SetFileProperties( $MediaFilePath )
     }
@@ -713,30 +741,138 @@ Class MediaFile {
 
   # Sets the MediaFile properties based on the physical file attributes
     hidden [void] SetFileProperties ( [string] $MediaFilePath ) {
-        
+ 
         $this.Path = $MediaFilePath
-        $this.Exists = [System.IO.File]::Exists($MediaFilePath)
 
         if ( $this.Exists ) {
             
             $File = Get-Item -LiteralPath $MediaFilePath
 
             $this.Name             = $File.Name
-            $this.BaseName         = $File.BaseName
+            $this.BaseNameWithTag  = $File.BaseName
             $this.Extension        = $File.Extension
             $this.ParentFolderName = $File.Directory.Name
             $this.ParentFolderPath = $File.Directory.FullName
             $this.CreatedTime      = $File.CreationTime
             $this.LastUpdatedTime  = $File.LastWriteTime
 
+            if ( $File.Name -match '\[[^\]]+\]' ) {
+                $this.FileTag      = [regex]::Match($this.Name,'\[[^\]]+\]').value
+                $this.FileTagValue = [regex]::Match($this.Name,'(?<=\[)[^\]]+(?=\])').value
+                $this.BaseName     = $File.BaseName -replace '\s*\[[^\]]+\]', ''
+            }
+            else {
+                $this.BaseName = $File.BaseName
+            }
+
+            $parts = $this.GetFileNameParts($this.Name)
+            if ( $parts.UsesTVShowFormat ) {
+                $this.FileTVShowName      = $parts.ShowName
+                $this.FileTVSeasonNumber  = $parts.SeasonNumber
+                $this.FileTVEpisodeNumber = $parts.EpisodeNumber
+                $this.FileTVEpisodeTitle  = $parts.EpisodeTitle
+
+
+            }
+            elseif ( $parts.UsesMovieFormat ) {
+                $this.FileMovieName = $parts.MovieTitle
+                $this.FileMovieYear = $parts.MovieYear
+            }
+
             $this.SetPosterPath()
 
-            $this.Name -match '(?<=\[)[^\]]+(?=\])'
-            $this.FileTag = $matches[0]
             $this.SetProfileProperties('FileTag',$this.FileTag)
 
         }
     }
+
+
+  static [PSCustomObject] GetFileNameParts ( [string] $FileName ) {
+
+    $fxp = '^(?<base>.+?)\s*(?<tag>\[[^\]]*\])?\s*(?<ext>\.[A-Za-z0-9]{1,6})?$'
+    $mxp = '(?<title>.+?)\s*\((?<year>\d{4})\)'
+    $num = 'one|two|three|four|five|six|seven|eight|nine|ten'
+    $txf = '^(?<show>.+?)\s*-\s*[sS](?<season>\d{1,2})[eE](?<episode>\d{1,2})\s*-\s*(?<title>.+)$'
+    $txp = ('(?i)^(?<show>.+?)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
+            '(?:[\s,:-]*?(?:\(?\s*(?:part|pt)\.?\s*(?<part>\d{1,2}|'+$num+')\s*\)?|\(?\s*(?<part>\d{1,2})\s*\)?))?\s*$')
+
+    $parts = [ordered]@{ FullName = $FileName; StandardizedName = $null }
+    
+    $fp = [regex]::Match($FileName,$fxp)
+    if ( $fp.success ) {
+
+        $parts.FullName     = $FileName
+        $parts.BaseName     = $fp.Groups['base'].Value
+        $parts.FileTag      = $fp.Groups['tag'].Value
+        $parts.FileTagValue = [regex]::Match($FileName,'(?<=\[)[^\]]+(?=\])').value
+        $parts.Extension    = $fp.Groups['ext'].Value
+
+        $tf = [regex]::Match($parts.BaseName,$txf)
+        $tp = [regex]::Match($parts.BaseName,$txp)
+        if ( $tp.success ) {
+            
+            $parts.UsesTVShowFormat             = $true
+            $parts.UsesMovieFormat              = $false
+            $parts.ShowName                     = $tp.Groups['show'].Value.Trim()
+            $parts.SeasonNumber                 = $tp.Groups['season'].Value
+            $parts.EpisodeNumber                = $tp.Groups['episode'].Value
+            $parts.EpisodeTitle                 = $tp.Groups['title'].Value.Trim()
+            $parts.EpisodeTitleWithPart         = $tf.Groups['title'].Value.Trim()
+            $parts.EpisodeTitleWithPartOriginal = $tf.Groups['title'].Value.Trim()
+            $parts.EpisodeTitlePart             = $null
+            $parts.EpisodeTitlePartOriginal     = $tp.Groups['part'].value -eq '' ? $null :
+                                                  $tp.Groups['part'].value.ToString().Trim()
+
+            if ( $parts.EpisodeTitlePartOriginal ) {
+                if ($parts.EpisodeTitlePartOriginal -match '^\d+$') { 
+                    $parts.EpisodeTitlePart = [int]$parts.EpisodeTitlePartOriginal 
+                } else {
+                    $parts.EpisodeTitlePart = switch ($parts.EpisodeTitlePartOriginal.ToLowerInvariant()) {
+                        'one'   { 1 }
+                        'two'   { 2 }
+                        'three' { 3 }
+                        'four'  { 4 }
+                        'five'  { 5 }
+                        'six'   { 6 }
+                        'seven' { 7 }
+                        'eight' { 8 }
+                        'nine'  { 9 }
+                        'ten'   { 10 }
+                        default { $null }
+                    }
+                }
+                $parts.EpisodeTitleWithPart = $parts.EpisodeTitle + $(' (Part {0})' -f $parts.EpisodeTitlePart)
+            }
+
+            $parts.StandardizedName = $parts.ShowName +
+                                      $(" - s{0:D2}e{1:D2} - " -f $parts.SeasonNumber, $parts.EpisodeNumber) +
+                                      $parts.EpisodeTitleWithPart + ' ' + 
+                                      $parts.FileTag +
+                                      $parts.extension
+
+        } else {
+            
+            $mp = [regex]::Match($parts.BaseName,$mxp)
+            if ( $mp.success ) {
+                $parts.UsesTVShowFormat = $false
+                $parts.UsesMovieFormat  = $true
+                $parts.MovieTitle       = $mp.Groups['title'].Value.Trim()
+                $parts.MovieYear        = $mp.Groups['year'].Value
+            }
+            else {
+                $parts.UsesTVShowFormat = $false
+                $parts.UsesMovieFormat  = $false
+            }
+
+        }
+    }
+    else {
+        $parts.UsesTVShowFormat = $false
+        $parts.UsesMovieFormat  = $false
+    }
+
+    return $parts
+  }
 
   # Test for the existence of and sets the poster path.
     hidden [void] SetPosterPath ( ) {
