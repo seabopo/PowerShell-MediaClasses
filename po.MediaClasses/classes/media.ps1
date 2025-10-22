@@ -588,10 +588,10 @@ Class MediaFile {
     [String]   $TVdbId
     [String]   $IMdbId
 
-    [String]   $ATVpMatchScore
-    [String]   $TMdbMatchScore
-    [String]   $TVdbMatchScore
-    [String]   $IMdbMatchScore
+    [Double]   $ATVpMatchScore
+    [Double]   $TMdbMatchScore
+    [Double]   $TVdbMatchScore
+    [Double]   $IMdbMatchScore
 
   #-----------------------------------------------
   # MPEG Properties
