@@ -21,7 +21,7 @@ Class Credit {
     [String] $ProfileImageURL
     [String] $ProfilePageURL
 
-    Credit ( ) {}
+    Credit ( ) { }
 
     Credit ( [String] $Type, [String] $Role, [String] $Name, [String] $ID ) { 
         $this.Type = $Type
@@ -41,7 +41,7 @@ Class Credit {
         $this.Name = $Name
     }
 
-    Credit ( [String] $Name ) { 
+    Credit ( [String] $Name ) {
         $this.Name = $Name
     }
 
@@ -65,7 +65,7 @@ Class ContentRating {
     [String]   $Rating
     [String[]] $Descriptors
 
-    ContentRating ( ) {}
+    ContentRating ( ) { }
 
     ContentRating ( [String] $Country, [String] $Rating, [String[]] $Descriptors ) { 
         $this.Country     = $Country
@@ -100,7 +100,7 @@ Class Entity {
     [String] $LogoPath
     [String] $LogoURL
 
-    Entity ( ) {}
+    Entity ( ) { }
 
     Entity ( [String] $Name, [String] $ID, [String] $Country, [String] $LogoPath, [String] $LogoURL ) { 
         $this.Name     = $Name
@@ -110,12 +110,12 @@ Class Entity {
         $this.LogoPath = $LogoURL
     }
 
-    Entity ( [String] $Name, [String] $ID ) { 
+    Entity ( [String] $Name, [String] $ID ) {
         $this.Name = $Name
         $this.ID   = $ID
     }
 
-    Entity ( [String] $Name ) { 
+    Entity ( [String] $Name ) {
         $this.Name = $Name
     }
 
@@ -144,7 +144,7 @@ Class Item {
         $this.Name = $Name
     }
 
-    Item ( [String] $Name, [String] $ID ) { 
+    Item ( [String] $Name, [String] $ID ) {
         $this.Name = $Name
         $this.ID   = $ID
     }
@@ -172,7 +172,7 @@ Class Image {
     [String]  $Path
     [String]  $URL
 
-    Image ( ) {}
+    Image ( ) { }
 
     Image ( [String] $Type, [Decimal] $AspectRatio, [Int] $Height, [Int] $Width, [String] $Language, [String] $Path, [String] $URL ) { 
         $this.Type        = $Type
@@ -207,7 +207,7 @@ Class Collection {
     [String] $BackdropURL
     [String] $PosterURL
 
-    Collection ( ) {}
+    Collection ( ) { }
 
     Collection ( [String] $ID, [String] $Name ) {
         $this.ID   = $ID
@@ -287,7 +287,7 @@ Class TVShow {
   # Constructors
   #-----------------------------------------------
 
-    TVShow ( ) {}
+    TVShow ( ) { }
 
     TVShow ( [String] $Name ) { $this.Name = $Name }
 
@@ -307,26 +307,8 @@ Class TVShow {
     }
 
   #-----------------------------------------------
-  # Properties
-  #-----------------------------------------------
-
-  # Episodes Read-only Runtime Property.
-  # Shows as null in the debugger as this is built/overwritten at runtime.
-  # Values are not exported (duplicated) in the XML.
-    # [TVEpisode[]] $Episodes = $( $this | 
-    #     Add-Member ScriptProperty 'Episodes' -Force {
-    #         $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
-    #     }
-    # )
-
-  #-----------------------------------------------
   # Methods
   #-----------------------------------------------
-
-  # Get all episodes (requires parens "()" to work.)
-    # [TVEpisode[]] Episodes ( ) {
-    #     return $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
-    # }
 
   # Export the current TVShow object to a specified file path as a typed XML object.
     [void] ExportToCache ( [String] $FilePath ) {
@@ -385,7 +367,7 @@ Class TVSeason {
     [Item[]]      $ExternalIDs
     [Image[]]     $Images
 
-    TVSeason ( ) {}
+    TVSeason ( ) { }
 
     TVSeason ( [int32] $Number ) { $this.Number = $Number }
 
@@ -448,7 +430,7 @@ Class TVEpisode {
     [Item[]]      $ExternalIDs
     [Image[]]     $Images
 
-    TVEpisode ( ) {}
+    TVEpisode ( ) { }
 
     TVEpisode ( [int32] $SeasonNumber, [int32] $EpisodeNumber, [String] $Title ) { 
         $this.Season = $SeasonNumber
@@ -568,6 +550,7 @@ Class MediaFile {
 
     [String]   $Path
     [String]   $Name
+    [String]   $StandardizedName
     [String]   $BaseName
     [String]   $BaseNameWithTag
     [String]   $FileTag
@@ -585,6 +568,15 @@ Class MediaFile {
     [String]   $FileTVSeasonNumber
     [String]   $FileTVEpisodeNumber
     [String]   $FileTVEpisodeTitle
+
+    [String]   $EpisodeTitleHasPartNumber
+    [String]   $EpisodeTitlePartNumber
+    [String]   $EpisodeTitleNoPart
+    [String]   $EpisodeTitlePart
+    [String]   $EpisodeTitleStandardized
+    [String]   $EpisodeTitleWithPartFormat1
+    [String]   $EpisodeTitleWithPartFormat2
+    [String]   $EpisodeTitleWithPartFormat3
 
     [String]   $FileMovieName
     [String]   $FileMovieYear
@@ -739,7 +731,7 @@ Class MediaFile {
   # Methods
   #-----------------------------------------------
 
-  # Sets the MediaFile properties based on the physical file attributes
+  # Sets the MediaFile properties based on the physical file attributes.
     hidden [void] SetFileProperties ( [string] $MediaFilePath ) {
  
         $this.Path = $MediaFilePath
@@ -765,114 +757,140 @@ Class MediaFile {
                 $this.BaseName = $File.BaseName
             }
 
-            $parts = $this.GetFileNameParts($this.Name)
+            $parts = [MediaFile]::GetFileNameParts($this.Name)
             if ( $parts.UsesTVShowFormat ) {
-                $this.FileTVShowName      = $parts.ShowName
-                $this.FileTVSeasonNumber  = $parts.SeasonNumber
-                $this.FileTVEpisodeNumber = $parts.EpisodeNumber
-                $this.FileTVEpisodeTitle  = $parts.EpisodeTitle
 
+                $this.StandardizedName            = $parts.StandardizedName
+
+                $this.FileTVShowName              = $parts.ShowName
+                $this.FileTVSeasonNumber          = $parts.SeasonNumber
+                $this.FileTVEpisodeNumber         = $parts.EpisodeNumber
+                $this.FileTVEpisodeTitle          = $parts.EpisodeTitle
+
+                $this.EpisodeTitleHasPartNumber   = $parts.EpisodeTitleHasPartNumber
+                $this.EpisodeTitlePartNumber      = $parts.EpisodeTitlePartNumber
+                $this.EpisodeTitleNoPart          = $parts.EpisodeTitleNoPart
+                $this.EpisodeTitlePart            = $parts.EpisodeTitlePart
+                $this.EpisodeTitleStandardized    = $parts.EpisodeTitleStandardized
+
+                $this.EpisodeTitleWithPartFormat1 = $parts.EpisodeTitleWithPartFormat1
+                $this.EpisodeTitleWithPartFormat2 = $parts.EpisodeTitleWithPartFormat2
+                $this.EpisodeTitleWithPartFormat3 = $parts.EpisodeTitleWithPartFormat3
 
             }
             elseif ( $parts.UsesMovieFormat ) {
-                $this.FileMovieName = $parts.MovieTitle
-                $this.FileMovieYear = $parts.MovieYear
+                $this.StandardizedName = $parts.StandardizedName
+                $this.FileMovieName    = $parts.MovieTitle
+                $this.FileMovieYear    = $parts.MovieYear
             }
 
             $this.SetPosterPath()
 
-            $this.SetProfileProperties('FileTag',$this.FileTag)
+            $this.SetProfileProperties('FileTag',$this.FileTagValue)
 
         }
     }
 
+  # Sets the MediaFile TV Episode or Movie properties based on the file name.
+    static [PSCustomObject] GetFileNameParts ( [string] $FileName ) {
 
-  static [PSCustomObject] GetFileNameParts ( [string] $FileName ) {
+        $fxp = '^(?<base>.+?)\s*(?<tag>\[[^\]]*\])?\s*(?<ext>\.[A-Za-z0-9]{1,6})?$'
+        $mxp = '(?<title>.+?)\s*\((?<year>\d{4})\)'
+        $num = 'one|two|three|four|five|six|seven|eight|nine|ten'
+        $txf = '^(?<show>.+?)\s*-\s*[sS](?<season>\d{1,2})[eE](?<episode>\d{1,2})\s*-\s*(?<title>.+)$'
+        $txp = ('(?i)^(?<show>.+?)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
+                '(?:[\s,:-]*?(?:\(?\s*(?:part|pt)\.?\s*(?<part>\d{1,2}|'+$num+')\s*\)?|\(?\s*(?<part>\d{1,2})\s*\)?))?\s*$')
 
-    $fxp = '^(?<base>.+?)\s*(?<tag>\[[^\]]*\])?\s*(?<ext>\.[A-Za-z0-9]{1,6})?$'
-    $mxp = '(?<title>.+?)\s*\((?<year>\d{4})\)'
-    $num = 'one|two|three|four|five|six|seven|eight|nine|ten'
-    $txf = '^(?<show>.+?)\s*-\s*[sS](?<season>\d{1,2})[eE](?<episode>\d{1,2})\s*-\s*(?<title>.+)$'
-    $txp = ('(?i)^(?<show>.+?)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
-            '(?:[\s,:-]*?(?:\(?\s*(?:part|pt)\.?\s*(?<part>\d{1,2}|'+$num+')\s*\)?|\(?\s*(?<part>\d{1,2})\s*\)?))?\s*$')
+        $parts = [ordered]@{ FullName = $FileName; StandardizedName = $null }
+        
+        $fp = [regex]::Match($FileName,$fxp)
+        if ( $fp.success ) {
 
-    $parts = [ordered]@{ FullName = $FileName; StandardizedName = $null }
-    
-    $fp = [regex]::Match($FileName,$fxp)
-    if ( $fp.success ) {
+            $parts.FullName     = $FileName
+            $parts.BaseName     = $fp.Groups['base'].Value
+            $parts.FileTag      = $fp.Groups['tag'].Value
+            $parts.FileTagValue = [regex]::Match($FileName,'(?<=\[)[^\]]+(?=\])').value
+            $parts.Extension    = $fp.Groups['ext'].Value
 
-        $parts.FullName     = $FileName
-        $parts.BaseName     = $fp.Groups['base'].Value
-        $parts.FileTag      = $fp.Groups['tag'].Value
-        $parts.FileTagValue = [regex]::Match($FileName,'(?<=\[)[^\]]+(?=\])').value
-        $parts.Extension    = $fp.Groups['ext'].Value
-
-        $tf = [regex]::Match($parts.BaseName,$txf)
-        $tp = [regex]::Match($parts.BaseName,$txp)
-        if ( $tp.success ) {
-            
-            $parts.UsesTVShowFormat             = $true
-            $parts.UsesMovieFormat              = $false
-            $parts.ShowName                     = $tp.Groups['show'].Value.Trim()
-            $parts.SeasonNumber                 = $tp.Groups['season'].Value
-            $parts.EpisodeNumber                = $tp.Groups['episode'].Value
-            $parts.EpisodeTitle                 = $tp.Groups['title'].Value.Trim()
-            $parts.EpisodeTitleWithPart         = $tf.Groups['title'].Value.Trim()
-            $parts.EpisodeTitleWithPartOriginal = $tf.Groups['title'].Value.Trim()
-            $parts.EpisodeTitlePart             = $null
-            $parts.EpisodeTitlePartOriginal     = $tp.Groups['part'].value -eq '' ? $null :
-                                                  $tp.Groups['part'].value.ToString().Trim()
-
-            if ( $parts.EpisodeTitlePartOriginal ) {
-                if ($parts.EpisodeTitlePartOriginal -match '^\d+$') { 
-                    $parts.EpisodeTitlePart = [int]$parts.EpisodeTitlePartOriginal 
-                } else {
-                    $parts.EpisodeTitlePart = switch ($parts.EpisodeTitlePartOriginal.ToLowerInvariant()) {
-                        'one'   { 1 }
-                        'two'   { 2 }
-                        'three' { 3 }
-                        'four'  { 4 }
-                        'five'  { 5 }
-                        'six'   { 6 }
-                        'seven' { 7 }
-                        'eight' { 8 }
-                        'nine'  { 9 }
-                        'ten'   { 10 }
-                        default { $null }
+            $tf = [regex]::Match($parts.BaseName,$txf)
+            $tp = [regex]::Match($parts.BaseName,$txp)
+            if ( $tp.success ) {
+                
+                $parts.UsesTVShowFormat          = $true
+                $parts.UsesMovieFormat           = $false
+                $parts.ShowName                  = $tp.Groups['show'].Value.Trim()
+                $parts.SeasonNumber              = $tp.Groups['season'].Value
+                $parts.EpisodeNumber             = $tp.Groups['episode'].Value
+                $parts.EpisodeTitle              = $tf.Groups['title'].Value.Trim()
+                $parts.EpisodeTitleHasPartNumber = $tp.Groups['part'].value -eq '' ? $false : $true
+                $parts.EpisodeTitlePartNumber    = $null
+                $parts.EpisodeTitleNoPart        = $tp.Groups['title'].Value.Trim()
+                $parts.EpisodeTitlePartString    = $tp.Groups['part'].value -eq '' ? $null :
+                                                   $parts.EpisodeTitle.Replace($parts.EpisodeTitleNoPart,'').Trim()
+                $parts.EpisodeTitlePart          = $tp.Groups['part'].value -eq '' ? $null :
+                                                   $tp.Groups['part'].value.ToString().Trim()
+                
+                if ( $parts.EpisodeTitleHasPartNumber ) {
+                    if ($parts.EpisodeTitlePart -match '^\d+$') { 
+                        $parts.EpisodeTitlePartNumber = [int]$parts.EpisodeTitlePart 
+                    } else {
+                        $parts.EpisodeTitlePartNumber = $(
+                            switch ($parts.EpisodeTitlePart.ToLowerInvariant()) {
+                                'one'   { 1 }
+                                'two'   { 2 }
+                                'three' { 3 }
+                                'four'  { 4 }
+                                'five'  { 5 }
+                                'six'   { 6 }
+                                'seven' { 7 }
+                                'eight' { 8 }
+                                'nine'  { 9 }
+                                'ten'   { 10 }
+                                default { $null }
+                            })
                     }
+                    $parts.EpisodeTitleWithPartFormat1 = $('{0} (Part {1})' -f $parts.EpisodeTitleNoPart, 
+                                                                            $parts.EpisodeTitlePartNumber)
+                    $parts.EpisodeTitleWithPartFormat2 = $('{0}, Part {1}'  -f $parts.EpisodeTitleNoPart, 
+                                                                            $parts.EpisodeTitlePartNumber)
+                    $parts.EpisodeTitleWithPartFormat3 = $('{0}, Pt. {1}'   -f $parts.EpisodeTitleNoPart, 
+                                                                            $parts.EpisodeTitlePartNumber)
                 }
-                $parts.EpisodeTitleWithPart = $parts.EpisodeTitle + $(' (Part {0})' -f $parts.EpisodeTitlePart)
-            }
+                
+                $parts.EpisodeTitleStandardized = $parts.EpisodeTitleWithPartFormat1 ?? $parts.EpisodeTitleNoPart
+                
+                $parts.StandardizedName = $("{0} - s{1:D2}e{2:D2} - {3} {4}{5}" -f $parts.ShowName,
+                                                                                $parts.SeasonNumber,
+                                                                                $parts.EpisodeNumber,
+                                                                                $parts.EpisodeTitleStandardized,
+                                                                                $parts.FileTag,
+                                                                                $parts.Extension)
 
-            $parts.StandardizedName = $parts.ShowName +
-                                      $(" - s{0:D2}e{1:D2} - " -f $parts.SeasonNumber, $parts.EpisodeNumber) +
-                                      $parts.EpisodeTitleWithPart + ' ' + 
-                                      $parts.FileTag +
-                                      $parts.extension
+            } else {
+                
+                $mp = [regex]::Match($parts.BaseName,$mxp)
+                if ( $mp.success ) {
+                    $parts.UsesTVShowFormat = $false
+                    $parts.UsesMovieFormat  = $true
 
-        } else {
-            
-            $mp = [regex]::Match($parts.BaseName,$mxp)
-            if ( $mp.success ) {
-                $parts.UsesTVShowFormat = $false
-                $parts.UsesMovieFormat  = $true
-                $parts.MovieTitle       = $mp.Groups['title'].Value.Trim()
-                $parts.MovieYear        = $mp.Groups['year'].Value
-            }
-            else {
-                $parts.UsesTVShowFormat = $false
-                $parts.UsesMovieFormat  = $false
-            }
+                    $parts.MovieTitle       = $mp.Groups['title'].Value.Trim()
+                    $parts.MovieYear        = $mp.Groups['year'].Value
+                }
+                else {
+                    $parts.UsesTVShowFormat = $false
+                    $parts.UsesMovieFormat  = $false
+                }
+                $parts.StandardizedName = $parts.FullName
 
+            }
         }
-    }
-    else {
-        $parts.UsesTVShowFormat = $false
-        $parts.UsesMovieFormat  = $false
-    }
+        else {
+            $parts.UsesTVShowFormat = $false
+            $parts.UsesMovieFormat  = $false
+        }
 
-    return $parts
-  }
+        return $parts
+    }
 
   # Test for the existence of and sets the poster path.
     hidden [void] SetPosterPath ( ) {
@@ -886,14 +904,14 @@ Class MediaFile {
         }
     }
 
-  # Set the properties gotten from AtomicParsley.
+  # Set the individual MPEG profile properties based on the file tag/profile.
     hidden [void] SetProfileProperties ( [String] $ProfileName, [String] $ProfileValue ) {
          if ( ($ProfileValue -split ' ').count -eq 6 ) {
             $tempValue    = ($ProfileValue -split ' ')
             $ProfileValue = ($tempValue[0..4] -join ' ') + $tempValue[5]
          }
         if ( ($ProfileValue -split ' ').count -eq 5 ) {
-            $pattern = '\b(?<r>\d{3,4}p)\s+(?<x>WS|FS)\s+(?<s>[A-Za-z0-9\+]+)\s+(?<v>[A-Za-z0-9\+\-]+)\s+(?<a>[A-Za-z0-9\+\-]+)\b'
+            $pattern = '\b(?<r>\d{3,4}p)\s+(?<x>WS|FS)\s+(?<s>[A-Za-z0-9\+]+)\s+(?<v>[A-Za-z0-9\+\-]+)\s+(?<a>[A-Za-z0-9\+\-\.]+)\b'
             if ($ProfileValue -match $pattern) {
                 $this."$($ProfileName)Profile"      = $ProfileValue
                 $this."$($ProfileName)Resolution"   = $matches['r']
@@ -907,7 +925,7 @@ Class MediaFile {
         }
     }
 
-  # Set the properties exported from AtomicParsley.
+  # Set the properties passed from AtomicParsley.
     [void] SetATOMproperties ( [Hashtable] $AtomData ) {
         $AtomData.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
@@ -933,7 +951,7 @@ Class MediaFile {
         }
     }
 
-  # Categorize the file's actual resolution into one of the main consumer resolutions.
+  # Categorize the file's actual resolution into one of the main media resolutions.
     hidden [void] SetDerivedResolution ( ) {
         if ( $null -ne $this.MPEG ) {
             $this.DerivedResolution = switch ( $this.MPEG.video.AspectRatioTag ) {
