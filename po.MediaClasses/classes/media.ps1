@@ -170,13 +170,8 @@ Class Image {
 
     Image ( ) { }
 
-    Image ( [String] $Type, [Decimal] $AspectRatio, [Int] $Height, [Int] $Width, [String] $Language, [String] $Path, [String] $URL ) { 
+    Image ( [String] $Type, [String] $URL ) {
         $this.Type        = $Type
-        $this.AspectRatio = $AspectRatio
-        $this.Height      = $Height
-        $this.Width       = $Width
-        $this.Language    = $Language
-        $this.Path        = $Path
         $this.URL         = $URL
     }
 
@@ -456,19 +451,22 @@ Class TVEpisode {
     }
 
     static TVEpisode ( ) {
-        [TVEpisode] | Update-TypeData -MemberType ScriptProperty -MemberName BaseFileName -Value {
-            $t = $($this.Title -replace ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join '')))
-            $s = $this.season.ToString().PadLeft(2,'0')
-            $e = $this.number.ToString().PadLeft(2,'0')
-            $n = $( "s{0}e{1} - {2}" -f $s, $e, $t )
-            return $n
-        }
-        [TVEpisode] | Update-TypeData -MemberType ScriptProperty -MemberName ShowFileName -Value {
-            $s = $($this.ShowTitle -replace ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join '')))
-            $b = $this.BaseFileName
-            $n = $( "{0} - {1}" -f $s, $b )
-            return $n
-        }
+        Update-TypeData -TypeName 'TVEpisode' -MemberType ScriptProperty `
+            -MemberName 'BaseFileName' `
+            -Value {
+                $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
+                $n = $( "s{0:D2}e{1:D2} - {2}" -f $this.season.ToString(),
+                                                  $this.number.ToString(),
+                                                  $($this.Title -replace $i) )
+                return $n
+            }
+        Update-TypeData -TypeName 'TVEpisode' -MemberType ScriptProperty `
+            -MemberName 'ShowFileName' `
+            -Value {
+                $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
+                $n = $( "{0} - {1}" -f $($this.ShowTitle -replace $i), $this.BaseFileName )
+                return $n
+            }
     }
 
 }
@@ -555,11 +553,6 @@ Class MediaFile {
     [String]   $ID
     [String]   $Path
     [String]   $Name
-    [String]   $StandardizedName
-    [String]   $BaseName
-    [String]   $BaseNameWithTag
-    [String]   $FileTag
-    [String]   $FileTagValue
     [String]   $Extension
     [bool]     $Exists
 
@@ -569,24 +562,97 @@ Class MediaFile {
     [String]   $CreatedTime
     [String]   $LastUpdatedTime
     
-    [String]   $FileTVShowName
-    [String]   $FileTVSeasonNumber
-    [String]   $FileTVEpisodeNumber
-    [String]   $FileTVEpisodeTitle
-
-    [String]   $EpisodeTitleHasPartNumber
-    [String]   $EpisodeTitlePartNumber
-    [String]   $EpisodeTitleNoPart
-    [String]   $EpisodeTitlePart
-    [String]   $EpisodeTitleStandardized
-    [String]   $EpisodeTitleWithPartFormat1
-    [String]   $EpisodeTitleWithPartFormat2
-    [String]   $EpisodeTitleWithPartFormat3
-
-    [String]   $FileMovieName
-    [String]   $FileMovieYear
-
     [String]   $PosterPath
+
+    [MediaFileTags]    $Tags
+    [MediaFileNames]   $Names
+    [MediaFileMatches] $Matches
+    [PSCustomObject]   $Encoding
+
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
+    MediaFile ( ) { }
+
+    static MediaFile ( ) {
+        Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
+            -MemberName 'Exists' `
+            -Value { return [System.IO.File]::Exists($this.Path) }
+    }
+
+    MediaFile ( [string] $MediaFilePath ) {
+        $this.SetFileProperties( $MediaFilePath )
+    }
+
+  #-----------------------------------------------
+  # Methods
+  #-----------------------------------------------
+
+  # Sets the MediaFile properties based on the physical file attributes.
+    hidden [void] SetFileProperties ( [string] $MediaFilePath ) {
+ 
+        $this.Path = $MediaFilePath
+
+        if ( $this.Exists ) {
+            
+            $file = Get-Item -LiteralPath $MediaFilePath
+
+            $this.Name             = $file.Name
+            $this.Extension        = $file.Extension
+            $this.ParentFolderName = $file.Directory.Name
+            $this.ParentFolderPath = $file.Directory.FullName
+            $this.CreatedTime      = $file.CreationTime
+            $this.LastUpdatedTime  = $file.LastWriteTime
+
+            $this.ID      = [Media]::GetFileHash($this.Path)
+            $this.Matches = [MediaFileMatches]::new($this.ID)
+            $this.Names   = [MediaFileNames]::new($this.Name)
+
+            $this.SetPosterPath()
+           
+        }
+    }
+
+  # Test for the existence of and sets the poster path.
+    hidden [void] SetPosterPath ( ) {
+        $SupportedFileExtensions = @('.jpg','.jpeg','.png','.tbn')
+        foreach ( $Extension in $SupportedFileExtensions ){
+            $PosterFilePath = ($this.Path -replace "\$($this.Extension)$",'') + $Extension
+            if ( [System.IO.File]::Exists($PosterFilePath) ) {
+                $this.PosterPath = $PosterFilePath
+                break
+            }
+        }
+    }
+
+  # Set the tags/atoms.
+    [void] SetTags ( [Hashtable] $TagData ) {
+        $this.Tags = [MediaFileTags]::new($TagData)
+    }
+
+  # Set the encoding properties.
+    [void] SetEncoding ( [Hashtable] $EncodingData ) {
+        $this.Encoding = $EncodingData
+        if ( $this.Names.EncodedVideoIsDenoised ) { $this.Encoding.Video.FormatTag += '-D' }
+        if ( $this.Encoding.SourceTag -eq 'OTA' -and $this.Names.EncodedSource -eq 'DVD' ) { 
+            $this.Encoding.SourceTag = 'DVD'
+        }
+        $this.Encoding.ProfileTag = $( '{0} {1} {2} {3} {4}' -f $this.Encoding.Video.ResolutionTag,
+                                                                $this.Encoding.Video.AspectRatioTag,
+                                                                $this.Encoding.SourceTag,
+                                                                $this.Encoding.Video.FormatTag,
+                                                                $this.Encoding.Audio.FormatTag )
+    }
+
+}
+
+#------------------------------------------------------------------------------------------------------------------
+# The online database ids of the entries matching a single file.
+#------------------------------------------------------------------------------------------------------------------
+Class MediaFileMatches {
+
+    [String]   $FileId
 
     [String]   $ATVpId
     [String]   $TMdbId
@@ -598,44 +664,78 @@ Class MediaFile {
     [Double]   $TVdbMatchScore
     [Double]   $IMdbMatchScore
 
-  #-----------------------------------------------
-  # MPEG Properties
-  #-----------------------------------------------
+    MediaFileMatches ( [String] $FileId ) {
+        $this.FileId = $FileId
+    }
 
-    [Object]   $MPEG
+}
 
-    [String]   $FileTagProfile
-    [String]   $FileTagResolution
-    [String]   $FileTagAspect
-    [String]   $FileTagSource
-    [String]   $FileTagVideoProfile
-    [Bool]     $FileTagVideoProfileAnimation
-    [Bool]     $FileTagVideoProfileDenoised
-    [String]   $FileTagAudioProfile
 
-    [String]   $CommentProfile
-    [String]   $CommentResolution
-    [String]   $CommentAspect
-    [String]   $CommentSource
-    [String]   $CommentVideoProfile
-    [Bool]     $CommentVideoProfileAnimation
-    [Bool]     $CommentVideoProfileDenoised
-    [String]   $CommentAudioProfile
+#------------------------------------------------------------------------------------------------------------------
+# Detokenizes the different naming parts of a TV or Movie file name.
+#------------------------------------------------------------------------------------------------------------------
+Class MediaFileNames {
 
-    [String]   $DerivedProfile
-    [String]   $DerivedResolution
-    [String]   $DerivedAspect
-    [String]   $DerivedSource
-    [String]   $DerivedVideoProfile
-    [Bool]     $DerivedVideoProfileAnimation
-    [Bool]     $DerivedVideoProfileDenoised
-    [String]   $DerivedAudioProfile
-    
-  #-----------------------------------------------
-  # Embedded File Metadata (AtomicParsley Atoms)
-  #-----------------------------------------------
+    [String]   $FullName
+    [String]   $StandardizedName
+    [String]   $BaseName
+    [String]   $BaseNameWithTag
+    [String]   $Extension
+
+    [String]   $FileTag
+    [String]   $FileTagValue
+
+    [String]   $TVShowName
+    [String]   $TVShowNameAndYear
+    [String]   $TVShowYear
+    [String]   $TVSeasonNumber
+    [String]   $TVEpisodeNumber
+    [String]   $TVEpisodeTitle
+    [String]   $TVEpisodeTitleHasPartNumber
+    [String]   $TVEpisodeTitlePartNumber
+    [String]   $TVEpisodeTitleNoPart
+    [String]   $TVEpisodeTitlePart
+    [String]   $TVEpisodeTitleStandardized
+    [String]   $TVEpisodeTitleWithPartFormat1
+    [String]   $TVEpisodeTitleWithPartFormat2
+    [String]   $TVEpisodeTitleWithPartFormat3
+
+    [String]   $MovieName
+    [String]   $MovieYear
+
+    [Bool]     $UsesTVShowFormat
+    [Bool]     $UsesMovieFormat
+
+    [String]   $EncodedSummary
+    [String]   $EncodedResolution
+    [String]   $EncodedAspect
+    [String]   $EncodedSource
+    [String]   $EncodedVideoFormat
+    [String]   $EncodedAudioFormat
+    [Bool]     $EncodedVideoIsAnimated
+    [Bool]     $EncodedVideoIsDenoised
+
+    MediaFileNames ( [String] $FileName ) {
+        $this.Update($FileName)
+    }
+
+    [void] Update ( [String] $FileName ) {
+        $naming = [Media]::GetFileNaming($FileName)
+        $naming.Keys | ForEach-Object {
+            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
+                $this."$($_)" = $naming."$($_)"
+            }
+        }
+    }
+
+}
+
+#------------------------------------------------------------------------------------------------------------------
+# The ID3 Tags / AtomicParsley Atoms applied to a single media file.
+#------------------------------------------------------------------------------------------------------------------
+Class MediaFileTags {
+
   # '*' are default fields for TV Shows.
-  # '&' are generated from iTunesMovie data)
 
     [String]   $TVShowName                  # tvsh *
     [int32]    $TVSeasonNumber              # tvsn *
@@ -716,315 +816,75 @@ Class MediaFile {
     [String]   $rawAtomData
     [String]   $UnknownAtoms
 
-  #-----------------------------------------------
-  # Constructors
-  #-----------------------------------------------
-
-    MediaFile ( ) { }
-
-    static MediaFile ( ) {
-        Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
-            -MemberName 'Exists' `
-            -Value { return [System.IO.File]::Exists($this.Path) }
+    MediaFileTags ( [Hashtable] $TagData ) {
+        $this.Update($TagData)
     }
 
-    MediaFile ( [string] $MediaFilePath ) {
-        $this.SetFileProperties( $MediaFilePath )
-    }
-
-  #-----------------------------------------------
-  # Methods
-  #-----------------------------------------------
-
-  # Sets the MediaFile properties based on the physical file attributes.
-    hidden [void] SetFileProperties ( [string] $MediaFilePath ) {
- 
-        $this.Path = $MediaFilePath
-
-        if ( $this.Exists ) {
-            
-            $file = Get-Item -LiteralPath $MediaFilePath
-
-            $this.Name             = $file.Name
-            $this.BaseNameWithTag  = $file.BaseName
-            $this.Extension        = $file.Extension
-            $this.ParentFolderName = $file.Directory.Name
-            $this.ParentFolderPath = $file.Directory.FullName
-            $this.CreatedTime      = $file.CreationTime
-            $this.LastUpdatedTime  = $file.LastWriteTime
-
-            if ( $file.Name -match '\[[^\]]+\]' ) {
-                $this.FileTag      = [regex]::Match($this.Name,'\[[^\]]+\]').value
-                $this.FileTagValue = [regex]::Match($this.Name,'(?<=\[)[^\]]+(?=\])').value
-                $this.BaseName     = $file.BaseName -replace '\s*\[[^\]]+\]', ''
-            }
-            else {
-                $this.BaseName = $file.BaseName
-            }
-
-            $parts = [MediaFile]::GetFileNameParts($this.Name)
-            if ( $parts.UsesTVShowFormat ) {
-
-                $this.StandardizedName            = $parts.StandardizedName
-
-                $this.FileTVShowName              = $parts.ShowName
-                $this.FileTVSeasonNumber          = $parts.SeasonNumber
-                $this.FileTVEpisodeNumber         = $parts.EpisodeNumber
-                $this.FileTVEpisodeTitle          = $parts.EpisodeTitle
-
-                $this.EpisodeTitleHasPartNumber   = $parts.EpisodeTitleHasPartNumber
-                $this.EpisodeTitlePartNumber      = $parts.EpisodeTitlePartNumber
-                $this.EpisodeTitleNoPart          = $parts.EpisodeTitleNoPart
-                $this.EpisodeTitlePart            = $parts.EpisodeTitlePart
-                $this.EpisodeTitleStandardized    = $parts.EpisodeTitleStandardized
-
-                $this.EpisodeTitleWithPartFormat1 = $parts.EpisodeTitleWithPartFormat1
-                $this.EpisodeTitleWithPartFormat2 = $parts.EpisodeTitleWithPartFormat2
-                $this.EpisodeTitleWithPartFormat3 = $parts.EpisodeTitleWithPartFormat3
-
-            }
-            elseif ( $parts.UsesMovieFormat ) {
-                $this.StandardizedName = $parts.StandardizedName
-                $this.FileMovieName    = $parts.MovieTitle
-                $this.FileMovieYear    = $parts.MovieYear
-            }
-
-            $this.ID = [MediaFile]::GetIdHash($this.Path)
-
-            $this.SetPosterPath()
-
-            $this.SetProfileProperties('FileTag',$this.FileTagValue)
-
-        }
-    }
-
-  # Test for the existence of and sets the poster path.
-    hidden [void] SetPosterPath ( ) {
-        $SupportedFileExtensions = @('.jpg','.jpeg','.png','.tbn')
-        foreach ( $Extension in $SupportedFileExtensions ){
-            $PosterFilePath = ($this.Path -replace "\$($this.Extension)$",'') + $Extension
-            if ( [System.IO.File]::Exists($PosterFilePath) ) {
-                $this.PosterPath = $PosterFilePath
-                break
-            }
-        }
-    }
-
-  # Set the individual MPEG profile properties based on the file tag/profile.
-    hidden [void] SetProfileProperties ( [String] $ProfileName, [String] $ProfileValue ) {
-         if ( ($ProfileValue -split ' ').count -eq 6 ) {
-            $tempValue    = ($ProfileValue -split ' ')
-            $ProfileValue = ($tempValue[0..4] -join ' ') + $tempValue[5]
-         }
-        if ( ($ProfileValue -split ' ').count -eq 5 ) {
-            $pattern = '\b(?<r>\d{3,4}p)\s+(?<x>WS|FS)\s+(?<s>[A-Za-z0-9\+]+)\s+(?<v>[A-Za-z0-9\+\-]+)\s+(?<a>[A-Za-z0-9\+\-\.]+)\b'
-            if ($ProfileValue -match $pattern) {
-                $this."$($ProfileName)Profile"      = $ProfileValue
-                $this."$($ProfileName)Resolution"   = $matches['r']
-                $this."$($ProfileName)Aspect"       = $matches['x']
-                $this."$($ProfileName)Source"       = $matches['s']
-                $this."$($ProfileName)VideoProfile" = $matches['v']
-                $this."$($ProfileName)AudioProfile" = $matches['a']
-                $this."$($ProfileName)VideoProfileAnimation" = $this."$($ProfileName)VideoProfile" -like "*2DA"
-                $this."$($ProfileName)VideoProfileDenoised"  = $this."$($ProfileName)VideoProfile" -like "*ULD"
-            }
-        }
-    }
-
-  # Set the properties passed from AtomicParsley.
-    [void] SetATOMproperties ( [Hashtable] $AtomData ) {
-        $AtomData.Keys | ForEach-Object {
+    [void] Update ( [Hashtable] $TagData ) {
+        $TagData.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $AtomData."$($_)"
-            }
-        }
-        $this.SetProfileProperties('Comment',$this.comment)
-    }
-
-  # Set the properties of the profile tag as derived from the MPEG data via FFMPEG and MediaInfo.
-    [void] SetDerivedProperties ( ) {
-        if ( $null -ne $this.MPEG ) {
-            $this.SetDerivedResolution()
-            $this.SetDerivedSource()
-            $this.SetDerivedProfile()
-            $this.DerivedAspect       = $this.MPEG.video.AspectRatioTag
-            $this.DerivedAudioProfile = $this.MPEG.audio.FormatTag
-            $this.DerivedProfile      = $( '{0} {1} {2} {3} {4}' -f $this.DerivedResolution, `
-                                                                    $this.DerivedAspect, `
-                                                                    $this.DerivedSource, `
-                                                                    $this.DerivedVideoProfile, `
-                                                                    $this.DerivedAudioProfile )
-        }
-    }
-
-  # Categorize the file's actual resolution into one of the main media resolutions.
-    hidden [void] SetDerivedResolution ( ) {
-        if ( $null -ne $this.MPEG ) {
-            $this.DerivedResolution = switch ( $this.MPEG.video.AspectRatioTag ) {
-                'FS'     {   switch ( [convert]::ToInt32($this.MPEG.video.FrameWidth) ) {
-                                { $_ -gt 2200 -and $_ -le 3400 } {    "4K"; break } # 2872
-                                { $_ -gt 1200 -and $_ -le 1600 } { "1080p"; break } # 1440
-                                { $_ -gt  800 -and $_ -le 1100 } {  "720p"; break } #  960
-                                { $_ -gt  700 -and $_ -le  800 } {  "560p"; break } #  744
-                                { $_ -gt  600 -and $_ -le  700 } {  "480p"; break } #  640
-                                { $_ -gt  300 -and $_ -le  400 } {  "240p"; break } #  320
-                            }
-                        }
-                default {   switch ( [convert]::ToInt32($this.MPEG.video.FrameWidth) ) {
-                                { $_ -gt 2100 -and $_ -le 4200 } {    "4K"; break } # 4096
-                                { $_ -gt 1700 -and $_ -le 2100 } { "1080p"; break } # 1920
-                                { $_ -gt 1100 -and $_ -le 1400 } {  "720p"; break } # 1280
-                                { $_ -gt  880 -and $_ -le 1000 } {  "560p"; break } #  996
-                                { $_ -gt  500 -and $_ -le  880 } {  "480p"; break } #  854 (Anamorphic)
-                                { $_ -gt  200 -and $_ -le  500 } {  "240p"; break } #  320
-                            }
-                        }
+                $this."$($_)" = $TagData."$($_)"
             }
         }
     }
 
-  # Determine the source of the video, if possible, from the MPEG metadata.
-    hidden [void] SetDerivedSource ( ) {
-        
-        if ( $null -ne $this.MPEG ) {
+}
 
-            $AC3 = @('BAMTech','USP','GPAC','VideoHandler')
-            $AAC = @('Bento4')
+#------------------------------------------------------------------------------------------------------------------
+# A utility class for static, media-related functions.
+#------------------------------------------------------------------------------------------------------------------
+Class Media {
 
-            $m = $this.MPEG
-            $a = $this.MPEG.Audio
-            $v = $this.MPEG.Video
-
-            $this.DerivedSource = $(
-                if     ( ($m.iTunes) -and ($m.DrmProtected)                                            ) { 'IT+' }
-                elseif ( ($m.iTunes)                                                                   ) { 'IT'  }
-                elseif ( ($v.ColorSpace) -eq 'BT.601 NTSC'                                             ) { 'OTA' }
-                elseif ( ($m.EncodedBy) -like "HandBrake *"                                            ) { 'DSC' }
-                elseif ( ($m.EncodedBy) -like "Lavf*"                                                  ) { 'SC'  }
-                elseif ( ($m.CodecID -eq 'isom') -and ($a.codec -eq 'ec-3'  ) -and $v.encoder -in $AC3 ) { 'SC'  }
-                elseif ( ($m.CodecID -eq 'isom') -and ($a.codec -eq 'ac-3'  ) -and $v.encoder -in $AC3 ) { 'SC'  }
-                elseif ( ($m.CodecID -eq 'isom') -and ($a.codec -like 'mp4a') -and $v.encoder -in $AAC ) { 'SC'  }
-                elseif ( ($m.CodecID -eq 'mp42') -and ($a.codec -eq 'ec-3'  ) -and $v.encoder -in $AC3 ) { 'SC'  }
-                else                                                                                     { 'DSC' }
-            )
-
-            if ( $this.DerivedSource -eq 'DSC' ) {
-                $this.DerivedSource = $( if     ( Test-Is($this.FileTagSource) )        { $this.FileTagSource }
-                                         elseif ( Test-Is($this.CommentSource) )        { $this.CommentSource }
-                                         elseif ( $this.MPEG.video.FrameWidth -gt 900 ) { 'BR'  }
-                                         else                                           { 'DVD' } )
-            }
-
-             if ( $this.DerivedSource -eq 'OTA' ) {
-                if ( $this.FileTagSource -eq 'DVD' -or $this.CommentSource -eq 'DVD' ) { 
-                    $this.DerivedSource = 'DVD' 
-                }
-            }
-            
-        }
-        
-    }
-
-  # Set an encoding profile base on the EncodingSettings included in the exported MPEG data.
-    hidden [void] SetDerivedProfile ( ) {
-
-        if ( $null -ne $this.MPEG) {
-            $this.DerivedVideoProfile = ([convert]::ToInt32($this.MPEG.video.FrameWidth) -gt 900) ? 'HD' : 'SD'
-        }
-        
-        if ( $null -ne $this.MPEG.video.EncodingSettings ) {
-
-            $this.DerivedVideoProfile = $(
-                switch -Wildcard ( $($this.MPEG.video.Profile + ' / ' + $this.MPEG.video.EncodingSettings) ) {
-                    '* cabac=0 * bframes=0 * vbv_maxrate=768 * vbv_bufsize=2000 *' { 'IPOD'; break }
-                    '* cabac=1 * ref=1 * vbv_maxrate=20000 * vbv_bufsize=25000 *'  { 'NQ';   break }
-                    '* cabac=1 * ref=3 * deblock=1:0:0 * vbv_maxrate=62500 *'      { 'HQ';   break }
-                    '* ref=4 * bframes=5 * vbv_bufsize=31250 *'                    { 'SHQ';  break }
-                    '* ref=3 * bframes=3 * vbv_bufsize=31250 *'                    { 'ATV3'; break }
-                    '* cabac=1 * ref=3 * me=umh * subme=10 *'                      { 'ATV2'; break }
-                    '* cabac=1 * brdo=0 * mbaff=0 *'                               { 'AU';   break }
-                    '* cabac=0 * ref=1 * mbaff=0 * bframes=0 *'                    { 'AU';   break }
-                    '* cabac=0 * ref=2 * bframes=0 *'                              { 'AU';   break }
-                    '* vbv_maxrate=5500 *'                                         { 'ATV1'; break }
-                    '* vbv_maxrate=9500 *'                                         { 'ATV1'; break }
-                    '* vbv_maxrate=14000 *'                                        { 'ATV1'; break }
-                    '* cabac=1 * subme=10 * vbv_maxrate=17500 *'                   { 'ATV1'; break }
-                    '* cabac=0 * ref=4 * bframes=0 *'                              { 'ATV1'; break }
-                    '* rc=2pass * ratetol=1.0 *'                                   { 'CBR';  break }
-                    default { 
-                        ([convert]::ToInt32($this.MPEG.video.FrameWidth) -gt 900) ? 'HD' : 'SD'; break 
-                    }
-                }
-            )
-
-            $crf = $([regex]::Match($this.MPEG.video.EncodingSettings,'(?<=\bcrf=)[0-9]+(?:\.[0-9]+)?').Value)
-            if (Test-Is($crf)) { $crf = $crf.ToString().Split('.')[0] } else { $crf = $null }
-            $cbr = $([regex]::Match($this.MPEG.video.EncodingSettings,'(?<=\bbitrate=)[0-9]+(?:\.[0-9]+)?').Value)
-            if (Test-Is($cbr)) { $cbr = $cbr.ToString().substring(0,$cbr.Length -3) } else { $cbr = $null }
-            $this.DerivedVideoProfile += $crf ?? $cbr
-            
-            if ( $this.MPEG.video.Tuning -eq 'animation') { 
-                $this.DerivedVideoProfile += 'A'
-                $this.DerivedVideoProfileAnimation = $true
-            }
-            if ( $this.FileTagVideoProfileDenoised ) { 
-                $this.DerivedVideoProfile += 'D'
-                $this.DerivedVideoProfileDenoised = $true
-            }
-
-        }
-        
-    }
-
-  #-----------------------------------------------
-  # STATIC Methods
-  #-----------------------------------------------
-
-  # Sets the TV Episode or Movie properties based on the file name.
-    static [PSCustomObject] GetFileNameParts ( [string] $FileName ) {
+  #-----------------------------------------------------------------------------
+  # De-tokenizes the file name.
+  #-----------------------------------------------------------------------------
+    static [PSCustomObject] GetFileNaming ( [string] $FileName ) {
 
         $fxp = '^(?<base>.+?)\s*(?<tag>\[[^\]]*\])?\s*(?<ext>\.[A-Za-z0-9]{1,6})?$'
         $mxp = '(?<title>.+?)\s*\((?<year>\d{4})\)'
         $num = 'one|two|three|four|five|six|seven|eight|nine|ten'
         $txf = '^(?<show>.+?)\s*-\s*[sS](?<season>\d{1,2})[eE](?<episode>\d{1,2})\s*-\s*(?<title>.+)$'
-        $txp = ('(?i)^(?<show>.+?)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
+        $txp = ('(?i)^(?<show>.+?)\s*\((?<year>\d{4})\)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
                 '(?:[\s,:-]*?(?:\(?\s*(?:part|pt)\.?\s*(?<part>\d{1,2}|'+$num+')\s*\)?|\(?\s*(?<part>\d{1,2})\s*\)?))?\s*$')
 
-        $parts = [ordered]@{ FullName = $FileName; StandardizedName = $null }
+        $p = [ordered]@{ FullName = $FileName; StandardizedName = $null }
         
         $fp = [regex]::Match($FileName,$fxp)
         if ( $fp.success ) {
 
-            $parts.FullName     = $FileName
-            $parts.BaseName     = $fp.Groups['base'].Value
-            $parts.FileTag      = $fp.Groups['tag'].Value
-            $parts.FileTagValue = [regex]::Match($FileName,'(?<=\[)[^\]]+(?=\])').value
-            $parts.Extension    = $fp.Groups['ext'].Value
+            $p.FullName        = $FileName
+            $p.BaseName        = $fp.Groups['base'].Value
+            $p.FileTag         = $fp.Groups['tag'].Value
+            $p.FileTagValue    = [regex]::Match($FileName,'(?<=\[)[^\]]+(?=\])').value
+            $p.Extension       = $fp.Groups['ext'].Value
+            $p.BaseNameWithTag = $FileName.Replace($p.Extension,'')
 
-            $tf = [regex]::Match($parts.BaseName,$txf)
-            $tp = [regex]::Match($parts.BaseName,$txp)
+            $tf = [regex]::Match($p.BaseName,$txf)
+            $tp = [regex]::Match($p.BaseName,$txp)
             if ( $tp.success ) {
                 
-                $parts.UsesTVShowFormat          = $true
-                $parts.UsesMovieFormat           = $false
-                $parts.ShowName                  = $tp.Groups['show'].Value.Trim()
-                $parts.SeasonNumber              = $tp.Groups['season'].Value
-                $parts.EpisodeNumber             = $tp.Groups['episode'].Value
-                $parts.EpisodeTitle              = $tf.Groups['title'].Value.Trim()
-                $parts.EpisodeTitleHasPartNumber = $tp.Groups['part'].value -eq '' ? $false : $true
-                $parts.EpisodeTitlePartNumber    = $null
-                $parts.EpisodeTitleNoPart        = $tp.Groups['title'].Value.Trim()
-                $parts.EpisodeTitlePartString    = $tp.Groups['part'].value -eq '' ? $null :
-                                                   $parts.EpisodeTitle.Replace($parts.EpisodeTitleNoPart,'').Trim()
-                $parts.EpisodeTitlePart          = $tp.Groups['part'].value -eq '' ? $null :
-                                                   $tp.Groups['part'].value.ToString().Trim()
+                $p.UsesTVShowFormat            = $true
+                $p.UsesMovieFormat             = $false
+                $p.TVShowName                  = $tp.Groups['show'].Value.Trim()
+                $p.TVShowNameAndYear           = $tf.Groups['show'].Value.Trim()
+                $p.TVShowYear                  = $tp.Groups['year'].Value.Trim()
+                $p.TVSeasonNumber              = $tp.Groups['season'].Value
+                $p.TVEpisodeNumber             = $tp.Groups['episode'].Value
+                $p.TVEpisodeTitle              = $tf.Groups['title'].Value.Trim()
+                $p.TVEpisodeTitleHasPartNumber = $tp.Groups['part'].value -eq '' ? $false : $true
+                $p.TVEpisodeTitlePartNumber    = $null
+                $p.TVEpisodeTitleNoPart        = $tp.Groups['title'].Value.Trim()
+                $p.TVEpisodeTitlePartString    = $tp.Groups['part'].value -eq '' ? $null :
+                                                  $p.TVEpisodeTitle.Replace($p.TVEpisodeTitleNoPart,'').Trim()
+                $p.TVEpisodeTitlePart          = $tp.Groups['part'].value -eq '' ? $null :
+                                                 $tp.Groups['part'].value.ToString().Trim()
                 
-                if ( $parts.EpisodeTitleHasPartNumber ) {
-                    if ($parts.EpisodeTitlePart -match '^\d+$') { 
-                        $parts.EpisodeTitlePartNumber = [int]$parts.EpisodeTitlePart 
+                if ( $p.TVEpisodeTitleHasPartNumber ) {
+                    if ($p.TVEpisodeTitlePart -match '^\d+$') { 
+                        $p.TVEpisodeTitlePartNumber = [int]$p.TVEpisodeTitlePart 
                     } else {
-                        $parts.EpisodeTitlePartNumber = $(
-                            switch ($parts.EpisodeTitlePart.ToLowerInvariant()) {
+                        $p.TVEpisodeTitlePartNumber = $(
+                            switch ($p.TVEpisodeTitlePart.ToLowerInvariant()) {
                                 'one'   { 1 }
                                 'two'   { 2 }
                                 'three' { 3 }
@@ -1038,51 +898,59 @@ Class MediaFile {
                                 default { $null }
                             })
                     }
-                    $parts.EpisodeTitleWithPartFormat1 = $('{0} (Part {1})' -f $parts.EpisodeTitleNoPart, 
-                                                                            $parts.EpisodeTitlePartNumber)
-                    $parts.EpisodeTitleWithPartFormat2 = $('{0}, Part {1}'  -f $parts.EpisodeTitleNoPart, 
-                                                                            $parts.EpisodeTitlePartNumber)
-                    $parts.EpisodeTitleWithPartFormat3 = $('{0}, Pt. {1}'   -f $parts.EpisodeTitleNoPart, 
-                                                                            $parts.EpisodeTitlePartNumber)
+                    $p.TVEpisodeTitleWithPartFormat1 = $('{0} (Part {1})' -f $p.TVEpisodeTitleNoPart,
+                                                                             $p.TVEpisodeTitlePartNumber)
+                    $p.TVEpisodeTitleWithPartFormat2 = $('{0}, Part {1}'  -f $p.TVEpisodeTitleNoPart,
+                                                                             $p.TVEpisodeTitlePartNumber)
+                    $p.TVEpisodeTitleWithPartFormat3 = $('{0}, Pt. {1}'   -f $p.TVEpisodeTitleNoPart,
+                                                                             $p.TVEpisodeTitlePartNumber)
                 }
                 
-                $parts.EpisodeTitleStandardized = $parts.EpisodeTitleWithPartFormat1 ?? $parts.EpisodeTitleNoPart
+                $p.TVEpisodeTitleStandardized = $p.TVEpisodeTitleWithPartFormat1 ?? $p.TVEpisodeTitleNoPart
                 
-                $parts.StandardizedName = $("{0} - s{1:D2}e{2:D2} - {3} {4}{5}" -f $parts.ShowName,
-                                                                                $parts.SeasonNumber,
-                                                                                $parts.EpisodeNumber,
-                                                                                $parts.EpisodeTitleStandardized,
-                                                                                $parts.FileTag,
-                                                                                $parts.Extension)
-
+                $p.StandardizedName = $("{0} - s{1:D2}e{2:D2} - {3} {4}{5}" -f $p.TVShowNameAndYear,
+                                                                               $p.TVSeasonNumber,
+                                                                               $p.TVEpisodeNumber,
+                                                                               $p.TVEpisodeTitleStandardized,
+                                                                               $p.FileTag,
+                                                                               $p.Extension)
             } else {
                 
-                $mp = [regex]::Match($parts.BaseName,$mxp)
+                $mp = [regex]::Match($p.BaseName,$mxp)
                 if ( $mp.success ) {
-                    $parts.UsesTVShowFormat = $false
-                    $parts.UsesMovieFormat  = $true
-
-                    $parts.MovieTitle       = $mp.Groups['title'].Value.Trim()
-                    $parts.MovieYear        = $mp.Groups['year'].Value
+                    $p.UsesTVShowFormat     = $false
+                    $p.UsesTVShowYearFormat = $false
+                    $p.UsesMovieFormat      = $true
+                    $p.MovieTitle           = $mp.Groups['title'].Value.Trim()
+                    $p.MovieYear            = $mp.Groups['year'].Value
                 }
                 else {
-                    $parts.UsesTVShowFormat = $false
-                    $parts.UsesMovieFormat  = $false
+                    $p.UsesTVShowFormat     = $false
+                    $p.UsesTVShowYearFormat = $false
+                    $p.UsesMovieFormat      = $false
                 }
-                $parts.StandardizedName = $parts.FullName
+                $p.StandardizedName = $p.FullName
 
             }
+
+            $ep = [Media]::GetEncodingProfileProperties($p.FileTagValue)
+            if ( $ep.count -gt 0 ) {
+                $ep.Keys | ForEach-Object { $p."$($_)" = $ep."$($_)" }
+            }
+
         }
         else {
-            $parts.UsesTVShowFormat = $false
-            $parts.UsesMovieFormat  = $false
+            $p.UsesTVShowFormat = $false
+            $p.UsesMovieFormat  = $false
         }
 
-        return $parts
+        return $p
     }
 
-  # Calculates a Fast file hash by analyzing 3 parts of the file instead of the entire file.
-    static [String] GetIdHash ( [string] $FilePath ) {
+  #-----------------------------------------------------------------------------
+  # Calculates a Fast file hash by analyzing 3 parts of a file.
+  #-----------------------------------------------------------------------------
+    static [String] GetFileHash ( [string] $FilePath ) {
 
         $f = [System.IO.File]::OpenRead($FilePath)
 
@@ -1137,4 +1005,33 @@ Class MediaFile {
 
     }
 
+  #-----------------------------------------------------------------------------
+  # De-tokenizes the MPEG profile summary.
+  #-----------------------------------------------------------------------------
+    static [PSCustomObject] GetEncodingProfileProperties ( [String] $Profile ) {
+        $r = @{ }
+        if ( ($Profile -split ' ').count -eq 6 ) {
+            $tempValue = ($Profile -split ' ')
+            $Profile   = ($tempValue[0..4] -join ' ') + $tempValue[5]
+         }
+        if ( ($Profile -split ' ').count -eq 5 ) {
+            $pattern = '\b(?<r>\d{3,4}p)\s+(?<x>WS|FS)\s+(?<s>[A-Za-z0-9\+]+)\s+(?<v>[A-Za-z0-9\+\-]+)\s+(?<a>[A-Za-z0-9\+\-\.]+)\b'
+            if ($Profile -match $pattern) {
+                $r.EncodedSummary         = $Profile 
+                $r.EncodedResolution      = $matches['r']
+                $r.EncodedAspect          = $matches['x']
+                $r.EncodedSource          = $matches['s']
+                $r.EncodedVideoFormat     = $matches['v']
+                $r.EncodedAudioFormat     = $matches['a']
+                $r.EncodedVideoIsAnimated = $r.EncodedVideoFormat -like "*2DA"
+                $r.EncodedVideoIsDenoised = ( $r.EncodedVideoFormat -like "*ULD" -or 
+                                              $r.EncodedVideoFormat.EndsWith('-D') )
+            }
+        }
+        return $r
+    }
+
+
+
 }
+
