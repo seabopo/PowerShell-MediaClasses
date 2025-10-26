@@ -20,6 +20,10 @@ Class Credit {
     [String] $ProfileImageURL
     [String] $ProfilePageURL
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     Credit ( ) { }
 
     Credit ( [String] $Type, [String] $Role, [String] $Name, [String] $ID ) { 
@@ -63,6 +67,10 @@ Class ContentRating {
     [String]   $Rating
     [String[]] $Descriptors
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     ContentRating ( ) { }
 
     ContentRating ( [String] $Country, [String] $Rating, [String[]] $Descriptors ) { 
@@ -96,6 +104,10 @@ Class Entity {
     [String] $Country
     [String] $LogoPath
     [String] $LogoURL
+
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
 
     Entity ( ) { }
 
@@ -134,6 +146,10 @@ Class Item {
     [String] $Name
     [String] $ID
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     Item ( ) {}
 
     Item ( [String] $Name ) { 
@@ -168,6 +184,10 @@ Class Image {
     [String]  $Path
     [String]  $URL
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     Image ( ) { }
 
     Image ( [String] $Type, [String] $URL ) {
@@ -196,6 +216,10 @@ Class Collection {
     [String] $PosterPath
     [String] $BackdropURL
     [String] $PosterURL
+
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
 
     Collection ( ) { }
 
@@ -292,10 +316,14 @@ Class TVShow {
         }
     }
     
-  # The Static Constructor upgrades getter/setter properties (not visible in the debugger).
+  #-----------------------------------------------
+  # Static Overrides
+  #-----------------------------------------------
+
     static TVShow ( ) {
-        [TVShow] | Update-TypeData -MemberType ScriptProperty -MemberName Episodes -Value {
-            return $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
+        Update-TypeData -TypeName 'TVShow' -MemberType ScriptProperty `
+            -MemberName Episodes `
+            -Value { return $( $this.Seasons | Select-Object -ExpandProperty 'Episodes' )
         }
     }
 
@@ -363,6 +391,10 @@ Class TVSeason {
     [Item[]]      $ExternalIDs
     [Image[]]     $Images
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     TVSeason ( ) { }
 
     TVSeason ( [int32] $Number ) { $this.Number = $Number }
@@ -429,6 +461,10 @@ Class TVEpisode {
     [Item[]]      $ExternalIDs
     [Image[]]     $Images
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     TVEpisode ( ) { }
 
     TVEpisode ( [int32] $SeasonNumber, [int32] $EpisodeNumber, [String] $Title ) { 
@@ -449,6 +485,10 @@ Class TVEpisode {
             }
         }
     }
+
+  #-----------------------------------------------
+  # Static Overrides
+  #-----------------------------------------------
 
     static TVEpisode ( ) {
         Update-TypeData -TypeName 'TVEpisode' -MemberType ScriptProperty `
@@ -522,6 +562,10 @@ Class Movie {
 
     [Item[]]            $ExternalIDs
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     Movie ( ) {}
 
     Movie ( [String] $Title ) {
@@ -575,14 +619,18 @@ Class MediaFile {
 
     MediaFile ( ) { }
 
+    MediaFile ( [string] $MediaFilePath ) {
+        $this.SetFileProperties( $MediaFilePath )
+    }
+
+  #-----------------------------------------------
+  # Static Overrides
+  #-----------------------------------------------
+
     static MediaFile ( ) {
         Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
             -MemberName 'Exists' `
             -Value { return [System.IO.File]::Exists($this.Path) }
-    }
-
-    MediaFile ( [string] $MediaFilePath ) {
-        $this.SetFileProperties( $MediaFilePath )
     }
 
   #-----------------------------------------------
@@ -664,6 +712,10 @@ Class MediaFileMatches {
     [Double]   $TVdbMatchScore
     [Double]   $IMdbMatchScore
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     MediaFileMatches ( ) { }
 
     MediaFileMatches ( [String] $FileId ) {
@@ -717,11 +769,19 @@ Class MediaFileNames {
     [Bool]     $EncodedVideoIsAnimated
     [Bool]     $EncodedVideoIsDenoised
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     MediaFileNames ( ) { }
     
     MediaFileNames ( [String] $FileName ) {
         $this.Update($FileName)
     }
+
+  #-----------------------------------------------
+  # Functions
+  #-----------------------------------------------
 
     [void] Update ( [String] $FileName ) {
         $naming = [Media]::GetFileNaming($FileName)
@@ -820,11 +880,19 @@ Class MediaFileTags {
     [String]   $rawAtomData
     [String]   $UnknownAtoms
 
+  #-----------------------------------------------
+  # Constructors
+  #-----------------------------------------------
+
     MediaFileTags () { }
 
     MediaFileTags ( [Hashtable] $TagData ) {
         $this.Update($TagData)
     }
+
+  #-----------------------------------------------
+  # Functions
+  #-----------------------------------------------
 
     [void] Update ( [Hashtable] $TagData ) {
         $TagData.Keys | ForEach-Object {
@@ -842,6 +910,64 @@ Class MediaFileTags {
 Class Media {
 
   #-----------------------------------------------------------------------------
+  # Calculates a Fast file hash by analyzing 3 parts of a file.
+  #-----------------------------------------------------------------------------
+    static [String] GetFileHash ( [string] $FilePath ) {
+
+        $f = [System.IO.File]::OpenRead($FilePath)
+
+        try {
+            
+            $size    = [long]$f.Length
+            $hasher  = [System.Security.Cryptography.SHA256]::Create()
+            $bufSize = 65536
+            $buf     = New-Object byte[] $bufSize
+
+          # Compute min without calling System.Math overloads
+            $min = { param($a,$b) if ($a -lt $b) { return $a } else { return $b } }
+
+          # Read File Head
+            $count = [int](& $min $bufSize $size)
+            if ($count -gt 0) {
+                $read = $f.Read($buf,0,$count)
+                $hasher.TransformBlock($buf,0,$read,$null,0) | Out-Null
+            }
+
+          # Read File Middle
+            $midPos = [long](([long]($size - $bufSize)) / 2)
+            if ($midPos -lt 0) { $midPos = 0 }
+            $remaining = $size - $midPos
+            $count = [int](& $min $bufSize $remaining)
+            if ($count -gt 0) {
+                $f.Position = $midPos
+                $read = $f.Read($buf,0,$count)
+                $hasher.TransformBlock($buf,0,$read,$null,0) | Out-Null
+            }
+
+          # Read File Tail
+            $tailPos = $size - $bufSize
+            if ($tailPos -lt 0) { $tailPos = 0 }
+            $f.Position = $tailPos
+            $remaining = $size - $f.Position
+            $count = [int](& $min $bufSize $remaining)
+            if ($count -gt 0) {
+                $read = $f.Read($buf,0,$count)
+                $hasher.TransformFinalBlock($buf,0,$read) | Out-Null
+            } else {
+                $hasher.TransformFinalBlock($buf,0,0) | Out-Null
+            }
+
+            $hash = ($hasher.Hash | ForEach-Object { $_.ToString('x2') }) -join ''
+
+            return "${size}-${hash}"
+
+        } finally {
+            $f.Close()
+        }
+
+    }
+
+  #-----------------------------------------------------------------------------
   # De-tokenizes the file name.
   #-----------------------------------------------------------------------------
     static [PSCustomObject] GetFileNaming ( [string] $FileName ) {
@@ -850,7 +976,7 @@ Class Media {
         $mxp = '(?<title>.+?)\s*\((?<year>\d{4})\)'
         $num = 'one|two|three|four|five|six|seven|eight|nine|ten'
         $txf = '^(?<show>.+?)\s*-\s*[sS](?<season>\d{1,2})[eE](?<episode>\d{1,2})\s*-\s*(?<title>.+)$'
-        $txp = ('(?i)^(?<show>.+?)\s*\((?<year>\d{4})\)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
+        $txp = ('(?i)^(?<show>.+?)\s*-\s*s(?<season>\d{1,2})e(?<episode>\d{1,2})\s*-\s*(?<title>.+?)' + 
                 '(?:[\s,:-]*?(?:\(?\s*(?:part|pt)\.?\s*(?<part>\d{1,2}|'+$num+')\s*\)?|\(?\s*(?<part>\d{1,2})\s*\)?))?\s*$')
 
         $p = [ordered]@{ FullName = $FileName; StandardizedName = $null }
@@ -873,7 +999,6 @@ Class Media {
                 $p.UsesMovieFormat             = $false
                 $p.TVShowName                  = $tp.Groups['show'].Value.Trim()
                 $p.TVShowNameAndYear           = $tf.Groups['show'].Value.Trim()
-                $p.TVShowYear                  = $tp.Groups['year'].Value.Trim()
                 $p.TVSeasonNumber              = $tp.Groups['season'].Value
                 $p.TVEpisodeNumber             = $tp.Groups['episode'].Value
                 $p.TVEpisodeTitle              = $tf.Groups['title'].Value.Trim()
@@ -944,6 +1069,10 @@ Class Media {
                 $ep.Keys | ForEach-Object { $p."$($_)" = $ep."$($_)" }
             }
 
+            if ( $p.TVEpisodeTitle -like "*©*" ) {
+                $p.EncodedAudioCommentary = $true
+            }
+
         }
         else {
             $p.UsesTVShowFormat = $false
@@ -954,90 +1083,69 @@ Class Media {
     }
 
   #-----------------------------------------------------------------------------
-  # Calculates a Fast file hash by analyzing 3 parts of a file.
-  #-----------------------------------------------------------------------------
-    static [String] GetFileHash ( [string] $FilePath ) {
-
-        $f = [System.IO.File]::OpenRead($FilePath)
-
-        try {
-            
-            $size    = [long]$f.Length
-            $hasher  = [System.Security.Cryptography.SHA256]::Create()
-            $bufSize = 65536
-            $buf     = New-Object byte[] $bufSize
-
-          # Compute min without calling System.Math overloads
-            $min = { param($a,$b) if ($a -lt $b) { return $a } else { return $b } }
-
-          # Read File Head
-            $count = [int](& $min $bufSize $size)
-            if ($count -gt 0) {
-                $read = $f.Read($buf,0,$count)
-                $hasher.TransformBlock($buf,0,$read,$null,0) | Out-Null
-            }
-
-          # Read File Middle
-            $midPos = [long](([long]($size - $bufSize)) / 2)
-            if ($midPos -lt 0) { $midPos = 0 }
-            $remaining = $size - $midPos
-            $count = [int](& $min $bufSize $remaining)
-            if ($count -gt 0) {
-                $f.Position = $midPos
-                $read = $f.Read($buf,0,$count)
-                $hasher.TransformBlock($buf,0,$read,$null,0) | Out-Null
-            }
-
-          # Read File Tail
-            $tailPos = $size - $bufSize
-            if ($tailPos -lt 0) { $tailPos = 0 }
-            $f.Position = $tailPos
-            $remaining = $size - $f.Position
-            $count = [int](& $min $bufSize $remaining)
-            if ($count -gt 0) {
-                $read = $f.Read($buf,0,$count)
-                $hasher.TransformFinalBlock($buf,0,$read) | Out-Null
-            } else {
-                $hasher.TransformFinalBlock($buf,0,0) | Out-Null
-            }
-
-            $hash = ($hasher.Hash | ForEach-Object { $_.ToString('x2') }) -join ''
-
-            return "${size}-${hash}"
-
-        } finally {
-            $f.Close()
-        }
-
-    }
-
-  #-----------------------------------------------------------------------------
   # De-tokenizes the MPEG profile summary.
   #-----------------------------------------------------------------------------
-    static [PSCustomObject] GetEncodingProfileProperties ( [String] $Profile ) {
+  # Samples:
+  # r      x    s       v      a    ac   c
+  # -----  ---  ------  -----  ---  ---  ---
+  # 4k     CWS  BR      SHQ20  DD
+  # 1080p  WS   BR      SHQ20  DD
+  # 1080p  WS   iTunes  HD     DD
+  # 1080p  WS   BR      SHQ20  AC3  5.1
+  # 1080p  WS   BR      ATV3+  DD        COM
+  # 240p   WS   BR      iPod   DPL  2.0
+  # 240p   WS   BR      iPod   DPL  2.0  COM
+  #-----------------------------------------------------------------------------
+    static [PSCustomObject] GetEncodingProfileProperties ( [String] $EncodingProfile ) {
+        
         $r = @{ }
-        if ( ($Profile -split ' ').count -eq 6 ) {
-            $tempValue = ($Profile -split ' ')
-            $Profile   = ($tempValue[0..4] -join ' ') + $tempValue[5]
-         }
-        if ( ($Profile -split ' ').count -eq 5 ) {
-            $pattern = '\b(?<r>\d{3,4}p)\s+(?<x>WS|FS)\s+(?<s>[A-Za-z0-9\+]+)\s+(?<v>[A-Za-z0-9\+\-]+)\s+(?<a>[A-Za-z0-9\+\-\.]+)\b'
-            if ($Profile -match $pattern) {
-                $r.EncodedSummary         = $Profile 
-                $r.EncodedResolution      = $matches['r']
-                $r.EncodedAspect          = $matches['x']
-                $r.EncodedSource          = $matches['s']
-                $r.EncodedVideoFormat     = $matches['v']
-                $r.EncodedAudioFormat     = $matches['a']
-                $r.EncodedVideoIsAnimated = $r.EncodedVideoFormat -like "*2DA"
-                $r.EncodedVideoIsDenoised = ( $r.EncodedVideoFormat -like "*ULD" -or 
-                                              $r.EncodedVideoFormat.EndsWith('-D') )
-            }
+        
+        $x = @{
+            rez = '(?<resolution>(?:\d{3,4}p|4[kK]))'
+            asp = '(?<aspect>FS|WS|CWS)'
+            src = '(?<source>[A-Za-z0-9\+\-]+)'
+            vid = '(?<videoformat>[A-Za-z0-9\+\-]+)'
+            aud = '(?<audioformat>[A-Za-z0-9\+\-\.]+)'
+            ach = '(?<audiochannels>[0-9\.]+)'
+            com = '(?<commentary>[A-Za-z]+)'
+            xxx = '\b'
+              s = '\s+'
         }
+        
+        $p = @( $x.xxx, $x.rez, $x.s, $x.asp, $x.s, $x.src, $x.s, $x.vid )
+
+        if ( ($EncodingProfile -split ' ').count -eq 7 -and $EncodingProfile.EndsWith(' COM') ) {
+            $p += @( $x.s, $x.aud, $x.s, $x.ach, $x.s, $x.com, $x.xxx )
+        }
+        elseif ( ($EncodingProfile -split ' ').count -eq 6 -and $EncodingProfile.EndsWith(' COM') ) {
+            $p += @( $x.s, $x.aud, $x.s, $x.com, $x.xxx )
+        }
+        elseif ( ($EncodingProfile -split ' ').count -eq 6 ) {
+            $p += @( $x.s, $x.aud, $x.s, $x.ach, $x.xxx )
+        }
+        else {
+            $p += @( $x.s, $x.aud, $x.xxx )
+        }
+
+        $p = $p -join ''
+
+        if ($EncodingProfile -match $p) {
+            $r.EncodedSummary         = $EncodingProfile 
+            $r.EncodedResolution      = $matches['resolution']
+            $r.EncodedAspect          = $matches['aspect']
+            $r.EncodedSource          = $matches['source']
+            $r.EncodedVideoFormat     = $matches['videoformat']
+            $r.EncodedAudioFormat     = $matches['audioformat']
+            $r.EncodedAudioChannels   = $matches['audiochannels']
+            $r.EncodedAudioCommentary = Test-IsSomething($matches['commentary'])
+            $r.EncodedVideoIsAnimated = $r.EncodedVideoFormat -like "*2DA"
+            $r.EncodedVideoIsDenoised = ( $r.EncodedVideoFormat -like "*ULD" -or 
+                                          $r.EncodedVideoFormat.EndsWith('-D') )
+        }
+        
         return $r
+
     }
-
-
 
 }
 
