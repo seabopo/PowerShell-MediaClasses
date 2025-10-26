@@ -664,6 +664,8 @@ Class MediaFileMatches {
     [Double]   $TVdbMatchScore
     [Double]   $IMdbMatchScore
 
+    MediaFileMatches ( ) { }
+
     MediaFileMatches ( [String] $FileId ) {
         $this.FileId = $FileId
     }
@@ -715,6 +717,8 @@ Class MediaFileNames {
     [Bool]     $EncodedVideoIsAnimated
     [Bool]     $EncodedVideoIsDenoised
 
+    MediaFileNames ( ) { }
+    
     MediaFileNames ( [String] $FileName ) {
         $this.Update($FileName)
     }
@@ -815,6 +819,8 @@ Class MediaFileTags {
 
     [String]   $rawAtomData
     [String]   $UnknownAtoms
+
+    MediaFileTags () { }
 
     MediaFileTags ( [Hashtable] $TagData ) {
         $this.Update($TagData)
