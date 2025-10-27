@@ -495,9 +495,7 @@ Class TVEpisode {
             -MemberName 'BaseFileName' `
             -Value {
                 $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
-                $n = $( "s{0:D2}e{1:D2} - {2}" -f $this.season.ToString(),
-                                                  $this.number.ToString(),
-                                                  $($this.Title -replace $i) )
+                $n = $( "s{0:D2}e{1:D2} - {2}" -f $this.season,$this.number,$($this.Title -replace $i) )
                 return $n
             }
         Update-TypeData -TypeName 'TVEpisode' -MemberType ScriptProperty `
