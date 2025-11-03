@@ -597,6 +597,7 @@ Class MediaFile {
     [String]   $Name
     [String]   $Extension
     [bool]     $Exists
+    [bool]     $TagsUpdated
 
     [String]   $ParentFolderName
     [String]   $ParentFolderPath
@@ -709,6 +710,11 @@ Class MediaFileMatches {
     [Double]   $TMdbMatchScore
     [Double]   $TVdbMatchScore
     [Double]   $IMdbMatchScore
+
+    [Bool]     $ATVpMatchConfirmed
+    [Bool]     $TMdbMatchConfirmed
+    [Bool]     $TVdbMatchConfirmed
+    [Bool]     $IMdbMatchConfirmed
 
   #-----------------------------------------------
   # Constructors
