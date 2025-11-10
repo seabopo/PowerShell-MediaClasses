@@ -598,6 +598,7 @@ Class MediaFile {
     [String]   $Extension
     [bool]     $Exists
     [bool]     $TagsUpdated
+    [String[]] $UpdatedTags = @()
 
     [String]   $ParentFolderName
     [String]   $ParentFolderPath
@@ -607,7 +608,7 @@ Class MediaFile {
     
     [String]   $PosterPath
 
-    [MediaFileTags]    $Tags
+    [Hashtable]        $Tags
     [MediaFileNames]   $Names
     [MediaFileMatches] $Matches
     [PSCustomObject]   $Encoding
@@ -675,7 +676,8 @@ Class MediaFile {
 
   # Set the tags/atoms.
     [void] SetTags ( [Hashtable] $TagData ) {
-        $this.Tags = [MediaFileTags]::new($TagData)
+        # $this.Tags = [MediaFileTags]::new($TagData)
+        $this.Tags = $TagData
     }
 
   # Set the encoding properties.
@@ -727,7 +729,6 @@ Class MediaFileMatches {
     }
 
 }
-
 
 #------------------------------------------------------------------------------------------------------------------
 # Detokenizes the different naming parts of a TV or Movie file name.
@@ -792,116 +793,6 @@ Class MediaFileNames {
         $naming.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
                 $this."$($_)" = $naming."$($_)"
-            }
-        }
-    }
-
-}
-
-#------------------------------------------------------------------------------------------------------------------
-# The ID3 Tags / AtomicParsley Atoms applied to a single media file.
-#------------------------------------------------------------------------------------------------------------------
-Class MediaFileTags {
-
-  # '*' are default fields for TV Shows.
-
-    [String]   $TVShowName                  # tvsh *
-    [int32]    $TVSeasonNumber              # tvsn *
-    [String]   $TVSeasonDescription         # sdes
-    [int32]    $TVEpisodeNumber             # tves *
-    [String]   $TVEpisodeID                 # tven *
-    [String]   $TVNetwork                   # tvnn
-
-    [String]   $Title                       # ©nam *
-    [String]   $Description                 # desc *
-    [String]   $LongDescription             # ldes *
-    [String]   $Genre                       # ©gen *
-    [String[]] $Genres                      
-    [String]   $iTunesGenre                 # geID *
-    [String]   $ReleaseDate                 # ©day *
-    [String]   $ContentRating               # iTunEXTC *
-    [String]   $iTunesMovie                 # iTunMOVI
-    [String]   $iTunesMovieCast             # iTunMOVI Generated data
-    [String]   $iTunesMovieDirectors        # iTunMOVI Generated data
-    [String]   $iTunesMovieScreenwriters    # iTunMOVI Generated data
-    [String]   $iTunesMovieStudio           # iTunMOVI Generated data
-
-    [String]   $Artist                      # ©ART *
-    [String]   $AlbumArtist                 # aART *
-    [String]   $Composer                    # ©wrt
-
-    [String]   $Album                       # ©alb *
-    [String]   $Grouping                    # ©grp
-    [String]   $Compilation                 # cpil *
-    [String]   $TrackNumber                 # trkn *
-    [String]   $DiscNumber                  # disk *
-
-    [String]   $SortName                    # sonm
-    [String]   $SortShow                    # sosn
-    [String]   $SortAlbum                   # soal
-    [String]   $SortArtist                  # soar
-    [String]   $SortAlbumArtist             # soaa
-    [String]   $SortComposer                # soco
-
-    [String]   $CoverArt                    # covr *
-    [String]   $Comment                     # ©cmt
-
-    [String]   $MediaType                   # stik *
-    [String]   $HDVideo                     # hdvd *
-    [String]   $Flavor                      # flvr * (read only)
-
-    [String]   $Keywords                    # keyw
-    [String]   $Category                    # catg
-    [String]   $UserRating                  # rate
-
-    [String]   $iTunesCatalogID             # cnID *
-    [String]   $PurchaseDate                # purd *
-    [String]   $AccountType                 # akID (read only)
-    [String]   $PurchaseAccount             # apID *
-    [String]   $PurchaseName                # ownr * (read only)
-    [String]   $DownloadAccount             # dwID * (read only)
-    [String]   $DownloadName                # dwlr * (read only)
-    [String]   $StoreFrontID                # sfID * (read only)
-    [String]   $VendorID                    # xid  *
-    [String]   $ArtistID                    # atID *
-    [String]   $PlayListID                  # plID *
-    [String]   $Copyright                   # cprt *
-
-    [String]   $Lyrics                      # ©lyr
-    [String]   $Tempo                       # tmpo
-    [String]   $AdvisoryRating              # rtng *
-    [String]   $GaplessPlayback             # pgap *
-    [String]   $MusicGenre                  # gnre
-
-    [String]   $Podcast                     # pcst
-    [String]   $PodcastURL                  # purl
-    [String]   $PodcastGUID                 # egid
-
-    [String]   $EncodingTool                # ©too
-    [String]   $EncodedBy                   # ©enc
-    [String]   $CameraID                    # cmID
-
-    [String]   $rawAtomData
-    [String]   $UnknownAtoms
-
-  #-----------------------------------------------
-  # Constructors
-  #-----------------------------------------------
-
-    MediaFileTags () { }
-
-    MediaFileTags ( [Hashtable] $TagData ) {
-        $this.Update($TagData)
-    }
-
-  #-----------------------------------------------
-  # Functions
-  #-----------------------------------------------
-
-    [void] Update ( [Hashtable] $TagData ) {
-        $TagData.Keys | ForEach-Object {
-            if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $TagData."$($_)"
             }
         }
     }
