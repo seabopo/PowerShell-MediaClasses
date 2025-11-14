@@ -51,7 +51,7 @@ Class Credit {
     Credit ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -87,7 +87,7 @@ Class ContentRating {
     ContentRating ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -131,7 +131,7 @@ Class Entity {
     Entity ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -164,7 +164,7 @@ Class Item {
     Item ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -198,7 +198,7 @@ Class Image {
     Image ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -231,7 +231,7 @@ Class Collection {
     Collection ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -311,7 +311,7 @@ Class TVShow {
     TVShow ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -402,7 +402,7 @@ Class TVSeason {
     TVSeason ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -481,7 +481,7 @@ Class TVEpisode {
     TVEpisode ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -573,7 +573,7 @@ Class Movie {
     Movie ( [Hashtable] $Info ) {
         $Info.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $Info."$($_)"
+                $this.$($_) = $Info.$($_)
             }
         }
     }
@@ -628,9 +628,27 @@ Class MediaFile {
   #-----------------------------------------------
 
     static MediaFile ( ) {
+
         Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
             -MemberName 'Exists' `
             -Value { return [System.IO.File]::Exists($this.Path) }
+
+        Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
+            -MemberName 'GeneratedName' `
+            -Value {
+                $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
+                $o = [Media]::CleanPunctuation($($this.Tags.tvShowName -replace $i))
+                $t = [Media]::CleanPunctuation($($this.Tags.title -replace $i))
+                $s = [int]$this.Tags.tvSeasonNumber
+                $e = [int]$this.Tags.tvEpisodeNumber
+                $n = '{0} - s{1:d2}e{2:d2} - {3}' -f $o,$s,$e,$t
+                if ( -not [string]::IsNullOrEmpty($this.Tags.comment) ) {
+                    $n += $(' [{0}]' -f $($this.Tags.comment -replace $i))
+                }
+                $n += '.m4v'
+                return $n
+            }
+
     }
 
   #-----------------------------------------------
@@ -792,7 +810,7 @@ Class MediaFileNames {
         $naming = [Media]::GetFileNaming($FileName)
         $naming.Keys | ForEach-Object {
             if ( $this.PSObject.Properties.Match($_).count -eq 1 ) {
-                $this."$($_)" = $naming."$($_)"
+                $this.$($_) = $naming.$($_)
             }
         }
     }
@@ -961,7 +979,7 @@ Class Media {
 
             $ep = [Media]::GetEncodingProfileProperties($p.FileTagValue)
             if ( $ep.count -gt 0 ) {
-                $ep.Keys | ForEach-Object { $p."$($_)" = $ep."$($_)" }
+                $ep.Keys | ForEach-Object { $p.$($_) = $ep.$($_) }
             }
 
             if ( $p.TVEpisodeTitle -like "*©*" ) {
@@ -1039,6 +1057,120 @@ Class Media {
         }
         
         return $r
+
+    }
+
+  #-----------------------------------------------------------------------------
+  # Removes Special Characters from a string
+  #-----------------------------------------------------------------------------
+    static [String] ReplaceSpecialCharacters ( [String] $String ) {
+
+        $sc = [System.Collections.Generic.Dictionary[string,string]]::new()
+
+        $sc.Add([char]0x2018,"'") # ‘ LEFT SINGLE QUOTATION MARK
+        $sc.Add([char]0x2019,"'") # ’ RIGHT SINGLE QUOTATION MARK
+        $sc.Add([char]0x201A,"'") # ‚ SINGLE LOW-9 QUOTATION MARK
+        $sc.Add([char]0x201B,"'") # ‛ SINGLE HIGH-REVERSED-9 QUOTATION MARK
+        $sc.Add([char]0x2032,"'") # ′ PRIME
+        $sc.Add([char]0x2035,"'") # ‵ REVERSED PRIME
+        $sc.Add([char]0x275B,"'") # ❛ HEAVY SINGLE COMMA QUOTATION MARK ORNAMENT
+        $sc.Add([char]0x275C,"'") # ❜
+        $sc.Add([char]0x201C,'"') # “ LEFT DOUBLE QUOTATION MARK
+        $sc.Add([char]0x201D,'"') # ” RIGHT DOUBLE QUOTATION MARK
+        $sc.Add([char]0x201E,'"') # „ DOUBLE LOW-9 QUOTATION MARK
+        $sc.Add([char]0x201F,'"') # ‟ DOUBLE HIGH-REVERSED-9 QUOTATION MARK
+        $sc.Add([char]0x2033,'"') # ″ DOUBLE PRIME
+        $sc.Add([char]0x2036,'"') # ‶ REVERSED DOUBLE PRIME
+        $sc.Add([char]0x275D,'"') # ❝ HEAVY DOUBLE COMMA QUOTATION MARK ORNAMENT
+        $sc.Add([char]0x275E,'"') # ❞
+        
+        $sc.Add("&#233;","Ã©")
+        $sc.Add("&#192;","A")
+        $sc.Add("&#193;","A")
+        $sc.Add("&#194;","A")
+        $sc.Add("&#195;","A")
+        $sc.Add("&#196;","A")
+        $sc.Add("&#197;","A")
+        $sc.Add("&#198;","A")
+        $sc.Add("&#200;","E")
+        $sc.Add("&#201;","E")
+        $sc.Add("&#202;","E")
+        $sc.Add("&#203;","E")
+        $sc.Add("&#204;","I")
+        $sc.Add("&#205;","I")
+        $sc.Add("&#206;","I")
+        $sc.Add("&#207;","I")
+        $sc.Add("&#210;","O")
+        $sc.Add("&#211;","O")
+        $sc.Add("&#212;","O")
+        $sc.Add("&#213;","O")
+        $sc.Add("&#214;","O")
+        $sc.Add("&#217;","U")
+        $sc.Add("&#218;","U")
+        $sc.Add("&#219;","U")
+        $sc.Add("&#220;","U")
+        $sc.Add("&#224;","a")
+        $sc.Add("&#225;","a")
+        $sc.Add("&#226;","a")
+        $sc.Add("&#227;","a")
+        $sc.Add("&#228;","a")
+        $sc.Add("&#229;","a")
+        $sc.Add("&#230;","a")
+        $sc.Add("&#232;","e")
+        $sc.Add("&#234;","e")
+        $sc.Add("&#235;","e")
+        $sc.Add("&#236;","i")
+        $sc.Add("&#237;","i")
+        $sc.Add("&#238;","i")
+        $sc.Add("&#239;","i")
+        $sc.Add("&#242;","o")
+        $sc.Add("&#243;","o")
+        $sc.Add("&#244;","o")
+        $sc.Add("&#245;","o")
+        $sc.Add("&#246;","o")
+        $sc.Add("&#249;","u")
+        $sc.Add("&#250;","u")
+        $sc.Add("&#251;","u")
+        $sc.Add("&#252;","u")
+        $sc.Add("&#253;","y")
+        $sc.Add("&#254;","y")
+        $sc.Add("&#255;","y")
+
+        foreach ( $k in $sc.keys ) {
+            $String = $String.Replace( $k,$sc[$k] )
+        }
+        return $String
+
+    }
+
+  #-----------------------------------------------------------------------------
+  # Removes Special Punctuation from a string
+  #-----------------------------------------------------------------------------
+    static [String] CleanPunctuation ( [String] $String ) {
+        
+        $sc = [System.Collections.Generic.Dictionary[string,string]]::new()
+        $sc.Add([char]0x2018,"'") # ‘ LEFT SINGLE QUOTATION MARK
+        $sc.Add([char]0x2019,"'") # ’ RIGHT SINGLE QUOTATION MARK
+        $sc.Add([char]0x201A,"'") # ‚ SINGLE LOW-9 QUOTATION MARK
+        $sc.Add([char]0x201B,"'") # ‛ SINGLE HIGH-REVERSED-9 QUOTATION MARK
+        $sc.Add([char]0x2032,"'") # ′ PRIME
+        $sc.Add([char]0x2035,"'") # ‵ REVERSED PRIME
+        $sc.Add([char]0x275B,"'") # ❛ HEAVY SINGLE COMMA QUOTATION MARK ORNAMENT
+        $sc.Add([char]0x275C,"'") # ❜
+        $sc.Add([char]0x201C,'"') # “ LEFT DOUBLE QUOTATION MARK
+        $sc.Add([char]0x201D,'"') # ” RIGHT DOUBLE QUOTATION MARK
+        $sc.Add([char]0x201E,'"') # „ DOUBLE LOW-9 QUOTATION MARK
+        $sc.Add([char]0x201F,'"') # ‟ DOUBLE HIGH-REVERSED-9 QUOTATION MARK
+        $sc.Add([char]0x2033,'"') # ″ DOUBLE PRIME
+        $sc.Add([char]0x2036,'"') # ‶ REVERSED DOUBLE PRIME
+        $sc.Add([char]0x275D,'"') # ❝ HEAVY DOUBLE COMMA QUOTATION MARK ORNAMENT
+        $sc.Add([char]0x275E,'"') # ❞
+        
+        foreach ( $k in $sc.keys ) {
+            $String = $String.Replace( $k,$sc[$k] )
+        }
+
+        return $String
 
     }
 
