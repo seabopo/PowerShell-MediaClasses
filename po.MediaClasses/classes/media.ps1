@@ -597,6 +597,7 @@ Class MediaFile {
     [String]   $Name
     [String]   $Extension
     [bool]     $Exists
+    [bool]     $TaggingComplete
     [bool]     $TagsUpdated
     [String[]] $UpdatedTags = @()
 
