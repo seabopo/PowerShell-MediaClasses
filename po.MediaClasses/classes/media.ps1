@@ -1180,7 +1180,7 @@ Class Media {
         $invalidChars = @('<','>',';',':','"','/','\','|','?','*') + ([char[]](0..31))
         $pattern = ("[{0}]" -f [RegEx]::Escape($invalidChars -Join ''))
         $result = $String -replace $pattern
-        return $String
+        return $result
     }
 
 }
