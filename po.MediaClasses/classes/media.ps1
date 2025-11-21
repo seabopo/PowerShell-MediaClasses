@@ -494,15 +494,14 @@ Class TVEpisode {
         Update-TypeData -TypeName 'TVEpisode' -MemberType ScriptProperty `
             -MemberName 'BaseFileName' `
             -Value {
-                $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
-                $n = $( "s{0:D2}e{1:D2} - {2}" -f $this.season,$this.number,$($this.Title -replace $i) )
+                $n = $( "s{0:D2}e{1:D2} - {2}" -f $this.season,$this.number,
+                                                  $([media]::CleanInvalidFileSystemChars($this.Title)))
                 return $n
             }
         Update-TypeData -TypeName 'TVEpisode' -MemberType ScriptProperty `
             -MemberName 'ShowFileName' `
             -Value {
-                $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
-                $n = $( "{0} - {1}" -f $($this.ShowTitle -replace $i), $this.BaseFileName )
+                $n = $( "{0} - {1}" -f $([media]::CleanInvalidFileSystemChars($this.ShowTitle)),$this.BaseFileName)
                 return $n
             }
     }
@@ -637,14 +636,13 @@ Class MediaFile {
         Update-TypeData -TypeName 'MediaFile' -MemberType ScriptProperty `
             -MemberName 'GeneratedName' `
             -Value {
-                $i = ("[{0}]" -f [RegEx]::Escape([IO.Path]::GetInvalidFileNameChars() -Join ''))
-                $o = [Media]::CleanPunctuation($($this.Tags.tvShowName -replace $i))
-                $t = [Media]::CleanPunctuation($($this.Tags.title -replace $i))
+                $o = [media]::CleanInvalidFileSystemChars([Media]::CleanPunctuation($this.Tags.tvShowName))
+                $t = [media]::CleanInvalidFileSystemChars([Media]::CleanPunctuation($this.Tags.title))
                 $s = [int]$this.Tags.tvSeasonNumber
                 $e = [int]$this.Tags.tvEpisodeNumber
                 $n = '{0} - s{1:d2}e{2:d2} - {3}' -f $o,$s,$e,$t
                 if ( -not [string]::IsNullOrEmpty($this.Tags.comment) ) {
-                    $n += $(' [{0}]' -f $($this.Tags.comment -replace $i))
+                    $n += $(' [{0}]' -f $([media]::CleanInvalidFileSystemChars($this.Tags.comment)))
                 }
                 $n += '.m4v'
                 return $n
@@ -1175,5 +1173,14 @@ Class Media {
 
     }
 
-}
+  #-----------------------------------------------------------------------------
+  # Removes invalid files system characters for Windows, Mac OS and Linux
+  #-----------------------------------------------------------------------------
+    static [String] CleanInvalidFileSystemChars ( [String] $String ) {
+        $invalidChars = @('<','>',';',':','"','/','\','|','?','*') + ([char[]](0..31))
+        $pattern = ("[{0}]" -f [RegEx]::Escape($invalidChars -Join ''))
+        $result = $String -replace $pattern
+        return $String
+    }
 
+}
