@@ -1177,7 +1177,7 @@ Class Media {
   # Removes invalid files system characters for Windows, Mac OS and Linux
   #-----------------------------------------------------------------------------
     static [String] CleanInvalidFileSystemChars ( [String] $String ) {
-        $invalidChars = @('<','>',';',':','"','/','\','|','?','*') + ([char[]](0..31))
+        $invalidChars = @('<','>',';',':','"','/','\','|','?','*','$','%') + ([char[]](0..31))
         $pattern = ("[{0}]" -f [RegEx]::Escape($invalidChars -Join ''))
         $result = $String -replace $pattern
         return $result
