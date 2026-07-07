@@ -600,6 +600,10 @@ Class MediaFile {
     [bool]     $TagsUpdated
     [String[]] $UpdatedTags = @()
 
+    [String]   $NewPath
+    [String]   $NewName
+    [String]   $NewExtension
+
     [String]   $ParentFolderName
     [String]   $ParentFolderPath
 
