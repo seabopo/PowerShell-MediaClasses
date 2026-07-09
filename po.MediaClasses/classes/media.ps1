@@ -644,8 +644,16 @@ Class MediaFile {
                 $t = [media]::CleanInvalidFileSystemChars([Media]::CleanPunctuation($this.Tags.title))
                 $s = [int]$this.Tags.tvSeasonNumber
                 $e = [int]$this.Tags.tvEpisodeNumber
-                $n = '{0} - s{1:d2}e{2:d2} - {3}' -f $o,$s,$e,$t
-                if ( -not [string]::IsNullOrEmpty($this.Tags.comment) ) {
+                $y = $([DateTime]$this.Tags.releaseDate).Year
+                if ( $this.Tags.mediaType -eq 'TV Show' -or $null -ne $this.Tags.tvShowName ) {
+                    $n = '{0} - s{1:d2}e{2:d2} - {3}' -f $o,$s,$e,$t
+                } else {
+                    $n = '{0} ({1})' -f $t,$y
+                }
+                if ( -not [string]::IsNullOrEmpty($this.Encoding.ProfileTag) ) {
+                    $n += $(' [{0}]' -f $([media]::CleanInvalidFileSystemChars($this.Encoding.ProfileTag)))
+                }
+                elseif ( -not [string]::IsNullOrEmpty($this.Tags.comment) ) {
                     $n += $(' [{0}]' -f $([media]::CleanInvalidFileSystemChars($this.Tags.comment)))
                 }
                 $n += '.m4v'

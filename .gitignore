@@ -2,4 +2,3 @@
 @publish/*
 @scratch/*
 tests/api-token.ps1
-sample-code/*
