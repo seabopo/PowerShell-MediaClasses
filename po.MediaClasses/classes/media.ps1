@@ -602,7 +602,6 @@ Class MediaFile {
 
     [String]   $NewPath
     [String]   $NewName
-    [String]   $NewExtension
 
     [String]   $ParentFolderName
     [String]   $ParentFolderPath
@@ -611,6 +610,7 @@ Class MediaFile {
     [String]   $LastUpdatedTime
     
     [String]   $PosterPath
+    [String]   $ThumbnailPath
 
     [Hashtable]        $Tags
     [MediaFileNames]   $Names
