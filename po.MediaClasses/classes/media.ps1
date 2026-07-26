@@ -592,6 +592,7 @@ Class MediaFile {
   #-----------------------------------------------
 
     [String]   $ID
+    [String]   $PathID
     [String]   $Path
     [String]   $Name
     [String]   $Extension
@@ -683,6 +684,7 @@ Class MediaFile {
             $this.LastUpdatedTime  = $file.LastWriteTime
 
             $this.ID      = [Media]::GetFileHash($this.Path)
+            $this.PathID  = [Media]::GetFilePathHash($this.Path,16)
             $this.Matches = [MediaFileMatches]::new($this.ID)
             $this.Names   = [MediaFileNames]::new($this.Name)
 
@@ -888,6 +890,60 @@ Class Media {
         } finally {
             $f.Close()
         }
+
+    }
+
+  #-----------------------------------------------------------------------------
+  # Calculates a shorter (file-system friendly) version of the full File Hash.
+  #-----------------------------------------------------------------------------
+  #
+  # Collision risk (~1% chance of any collision) by truncated hash length:
+  #
+  # HexChars    Bits    Files needed for ~1% collision risk
+  # --------    ----    -----------------------------------
+  #    8         32      ~9,300
+  #    12        48      ~2.4 million
+  #    16        64      ~610 million
+  #    20        80      ~156 billion
+  #    24        96      ~40 trillion
+  #    28        112     ~10 quadrillion
+  #    32        128     ~2.6 quintillion
+  # 
+  #-----------------------------------------------------------------------------
+
+    # static [String] GetShortFileHash ( [string] $FileHash, [int] $DesiredLength ) {
+    #     $hash = $FileHash.Substring($FileHash.IndexOf('-') + 1)
+    #     return $hash.Substring(0, $DesiredLength)
+    # }
+
+  #-----------------------------------------------------------------------------
+  # Calculates a Fast file hash based on the file path.
+  #-----------------------------------------------------------------------------
+  # Calculates an MD5 hash on the file path.
+  #
+  # Collision risk (~1% chance of any collision) by truncated hash length, using
+  # the birthday-paradox approximation n ≈ √(0.0201 × 2^bits):
+  #
+  # HexChars    Bits    Files needed for ~1% collision risk
+  # --------    ----    -----------------------------------
+  #    8         32      ~9,300
+  #    12        48      ~2.4 million
+  #    16        64      ~610 million
+  #    20        80      ~156 billion
+  #    24        96      ~40 trillion
+  #    28        112     ~10 quadrillion
+  #    32        128     ~2.6 quintillion (full MD5)
+  # 
+  #-----------------------------------------------------------------------------
+
+    static [String] GetFilePathHash ( [string] $FilePath, [int] $DesiredLength ) {
+
+        $bytes  = [System.Text.Encoding]::UTF8.GetBytes($FilePath)
+        $hasher = [System.Security.Cryptography.MD5]::Create()
+        $hash   = $hasher.ComputeHash($bytes)
+        $hex    = ($hash | ForEach-Object { $_.ToString('x2') }) -join ''
+
+        return $hex.Substring(0, $DesiredLength)
 
     }
 
