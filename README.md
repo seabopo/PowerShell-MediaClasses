@@ -14,12 +14,35 @@ Provides a set of reusable PowerShell classes for media files:
   - MediaFile (an MP4 or M4V file with iTunes-style Metadata)
 
 
+## Installing the PowerShell Module
+The po.MediaClasses PowerShell Module has only been tested with PowerShell 7.4 and above.
+
+Install the po.MediaClasses PowerShell Module with PSResourceGet, which comes with PowerShell 7.4 and later:
+```
+Install-PSResource -Name po.MediaClasses -Repository PSGallery -Scope CurrentUser
+```
+
+Install the PowerShell Modules that po.MediaClasses depends on:
+- [PowerShell-Toolkit](https://github.com/seabopo/PowerShell-Toolkit)
+- [PowerShell-AtomicParsley](https://github.com/seabopo/PowerShell-AtomicParsley)
+- [PowerShell-MediaInfo](https://github.com/seabopo/PowerShell-MediaInfo)
+```
+Install-PSResource -Name po.Toolkit -Repository PSGallery -Scope CurrentUser
+Install-PSResource -Name po.AtomicParsley -Repository PSGallery -Scope CurrentUser
+Install-PSResource -Name po.MediaInfo -Repository PSGallery -Scope CurrentUser
+```
+
+The po.AtomicParsley and po.MediaInfo modules require the AtomicParsley and MediaInfo command-line tools to be
+installed. See the [PowerShell-AtomicParsley](https://github.com/seabopo/PowerShell-AtomicParsley) and
+[PowerShell-MediaInfo](https://github.com/seabopo/PowerShell-MediaInfo) project pages for installation instructions.
+
+"Untrusted repository" prompt: PSGallery is untrusted by default. Add -TrustRepository to Install-PSResource to skip it.
+
+Updating later: use Update-PSResource -Name po.MediaClasses.
+
+
 ## How to Use this Module
-1. Download the module and place it one of the folders defined in your the following path: 
-    ```
-    $env:PSModulePath path
-    ```
-2. Add an "Import-Module" statement to your code or add po.MediaClasses to the "RequiredModules" module definition
+1. Add an "Import-Module" statement to your code or add po.MediaClasses to the "RequiredModules" module definition
    (psd1 file):
     ```
     import module po.MediaClasses
