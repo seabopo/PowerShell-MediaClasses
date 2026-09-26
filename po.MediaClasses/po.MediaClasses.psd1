@@ -12,7 +12,7 @@
 RootModule = 'po.MediaClasses.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1.25'
+ModuleVersion = '1.0.0'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Core', 'Desktop'
@@ -30,7 +30,7 @@ CompanyName = ''
 Copyright = '(c) Sean Powell. MIT License.'
 
 # Description of the functionality provided by this module
-Description = 'A collection of Classes focused on video media (Movies and TV Shows).'
+Description = 'A collection of Classes focused on video media (Movies and TV Shows). These classes are populated with information from the AtomicParsley and MediaInfo command line tools, which are managed by the po.AtomicParsley and po.MediaInfo PowerShell modules.'
 
 # Minimum version of the PowerShell engine required by this module
 PowerShellVersion = '7.4.0'
@@ -51,7 +51,7 @@ PowerShellVersion = '7.4.0'
 # ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @('po.Toolkit')
+RequiredModules = @('po.Toolkit','po.AtomicParsley','po.MediaInfo')
 
 # Assemblies that must be loaded prior to importing this module
 # RequiredAssemblies = @()
